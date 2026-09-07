@@ -1,0 +1,22 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace DomainCopilot.Domain.Entites
+{
+    public class Document
+    {
+        public Guid Id { get; set; }
+        public string FileName { get; set; } = string.Empty;
+        public string Source { get; set; } = string.Empty; 
+        public string SourceType { get; set; } = string.Empty;
+        public string Version { get; set; } = "1.0";
+        public string FileHash { get; set; } = string.Empty; 
+        public DateTime UploadedAt { get; set; }
+        public string Status { get; set; } = "Pending";
+        public string? FailureReason { get; set; }
+        public ICollection<DocumentChunk> Chunks { get; set; } = new List<DocumentChunk>();
+    }
+}
