@@ -1,26 +1,27 @@
-﻿using DomainCopilot.Application.Documents;
+﻿using DomainCopilot.Application.Documents.Ingestion;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace DomainCopilot.Infrastructure.Ingestion
 {
     public sealed class ClauseAwareChunker : IClauseChunker
     {
         private const int MaximumChunkCharacters = 2_000;
+        private const int MinimumChunkCharacters = 15; 
 
+        
         private static readonly Regex ClauseHeadingPattern = new(
-            @"^(?<section>\d+(?:\.\d+){0,4})[.)]?\s+(?<title>[A-Za-z][A-Za-z \-,/&]{2,120})$",
+            @"^\s*(?<clause>(?:ARTICLE|SECTION)\s+\d+(?:\.\d+)*|\d+\.\d+|\d+\.)\s+(?<title>[A-Z0-9][A-Za-z0-9\s\-,/&]{2,60})(?=\r?\n|\.|\s*$)",
             RegexOptions.Compiled | RegexOptions.Multiline);
 
-        public IReadOnlyList<ChunkDraft> Chunk(
-            IReadOnlyList<ExtractedPage> pages)
+        public IReadOnlyList<ChunkDraft> Chunk(IReadOnlyList<ExtractedPage> pages)
         {
             var chunks = new List<ChunkDraft>();
             var chunkIndex = 0;
+            string? currentClause = null;
 
             foreach (var page in pages)
             {
@@ -33,37 +34,40 @@ namespace DomainCopilot.Infrastructure.Ingestion
 
                 if (matches.Count == 0)
                 {
-                    AddChunkParts(
-                        chunks,
-                        page.Text,
-                        null,
-                        page.PageNumber,
-                        ref chunkIndex);
-
+                    AddChunkParts(chunks, page.Text, currentClause, page.PageNumber, ref chunkIndex);
                     continue;
+                }
+
+               
+                if (matches[0].Index > 0)
+                {
+                    var leadingText = page.Text[..matches[0].Index].Trim();
+                    if (leadingText.Length >= MinimumChunkCharacters)
+                    {
+                        AddChunkParts(chunks, leadingText, currentClause, page.PageNumber, ref chunkIndex);
+                    }
                 }
 
                 for (var index = 0; index < matches.Count; index++)
                 {
                     var heading = matches[index];
-
                     var endIndex = index + 1 < matches.Count
                         ? matches[index + 1].Index
                         : page.Text.Length;
 
-                    var sectionText = page.Text[
-                        heading.Index..endIndex].Trim();
+                    var sectionText = page.Text[heading.Index..endIndex].Trim();
 
-                    var clauseOrSection =
-                        $"{heading.Groups["section"].Value} " +
-                        heading.Groups["title"].Value;
+                    var clauseNo = heading.Groups["clause"].Value.Trim();
+                    var titleText = heading.Groups["title"].Value.Trim();
+                    currentClause = $"{clauseNo} {titleText}";
 
-                    AddChunkParts(
-                        chunks,
-                        sectionText,
-                        clauseOrSection,
-                        page.PageNumber,
-                        ref chunkIndex);
+                  
+                    if (sectionText.Length < MinimumChunkCharacters && index + 1 < matches.Count)
+                    {
+                        continue;
+                    }
+
+                    AddChunkParts(chunks, sectionText, currentClause, page.PageNumber, ref chunkIndex);
                 }
             }
 
@@ -77,26 +81,20 @@ namespace DomainCopilot.Infrastructure.Ingestion
             int pageNumber,
             ref int chunkIndex)
         {
-            var paragraphs = text.Split(
-                "\n\n",
-                StringSplitOptions.RemoveEmptyEntries |
-                StringSplitOptions.TrimEntries);
+            var paragraphs = Regex.Split(text, @"(?:\r?\n){2,}")
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Select(p => p.Trim())
+                .ToArray();
+
+            if (paragraphs.Length == 0) return;
 
             var buffer = new StringBuilder();
 
             foreach (var paragraph in paragraphs)
             {
-                if (buffer.Length > 0 &&
-                    buffer.Length + paragraph.Length + 2 >
-                    MaximumChunkCharacters)
+                if (buffer.Length > 0 && buffer.Length + paragraph.Length + 2 > MaximumChunkCharacters)
                 {
-                    AddChunk(
-                        chunks,
-                        buffer.ToString(),
-                        clauseOrSection,
-                        pageNumber,
-                        ref chunkIndex);
-
+                    AddChunk(chunks, buffer.ToString(), clauseOrSection, pageNumber, ref chunkIndex);
                     buffer.Clear();
                 }
 
@@ -110,12 +108,7 @@ namespace DomainCopilot.Infrastructure.Ingestion
 
             if (buffer.Length > 0)
             {
-                AddChunk(
-                    chunks,
-                    buffer.ToString(),
-                    clauseOrSection,
-                    pageNumber,
-                    ref chunkIndex);
+                AddChunk(chunks, buffer.ToString(), clauseOrSection, pageNumber, ref chunkIndex);
             }
         }
 
@@ -128,7 +121,8 @@ namespace DomainCopilot.Infrastructure.Ingestion
         {
             var finalContent = content.Trim();
 
-            if (string.IsNullOrWhiteSpace(finalContent))
+         
+            if (finalContent.Length < MinimumChunkCharacters)
             {
                 return;
             }
@@ -147,5 +141,4 @@ namespace DomainCopilot.Infrastructure.Ingestion
                 }));
         }
     }
-
 }
