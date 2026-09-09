@@ -47,3 +47,25 @@ distinct pipeline stage per FR-1 (extract -> clean -> chunk -> embed
   evaluation harness (Day 11) provides real hit-rate numbers.
 - Idempotent re-ingestion is enforced via SHA-256 file hash at the
   Document level, not per-chunk.
+
+## Note on Null `ClauseOrSection` Values
+
+Not all `ClauseOrSection = null` chunks represent chunking failures. Manual
+inspection of the corpus (post-ingestion review via direct database query)
+revealed three distinct categories:
+
+1. **Genuine numbered clauses missed** due to the heading and its content
+   appearing on the same line (e.g. `1.2 Interpretation. Section 10.5...`)
+   rather than on separate lines as the original regex assumed — addressed
+   by refining `ClauseHeadingPattern` to no longer require the heading to
+   end the line.
+2. **Document headers and exhibit titles** (e.g. `Exhibit 10.2 Execution
+   Version INTELLECTUAL PROPERTY AGREEMENT...`), which correctly have no
+   clause number — this is expected, not a defect.
+3. **Tabular data** (schedules, trademark/domain name lists) flattened to
+   plain text during PDF extraction, which has no natural clause structure
+   and is out of scope for regex-based chunking in this MVP.
+
+Categories 2 and 3 are accepted limitations, not chunking bugs. Category 1
+was fixed; residual null rates for categories 2–3 will be quantified against
+the golden set in `docs/EVALUATION.md` (Day 11).
