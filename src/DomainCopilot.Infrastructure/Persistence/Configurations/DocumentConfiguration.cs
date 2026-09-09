@@ -10,17 +10,26 @@ public class DocumentConfiguration : IEntityTypeConfiguration<Document>
     {
         builder.HasKey(document => document.Id);
 
-        builder.Property(document => document.FileName).IsRequired();
+        builder.Property(document => document.FileName).IsRequired().HasMaxLength(500);
+        builder.Property(document => document.Source).IsRequired().HasMaxLength(500);
+        builder.Property(document => document.FileHash).IsRequired().HasMaxLength(128);
+        builder.Property(document => document.Version).IsRequired().HasMaxLength(50);
 
-        builder.Property(document => document.Source).IsRequired();
+        builder.Property(document => document.SourceType)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasMaxLength(20);
 
-        builder.Property(document => document.SourceType).IsRequired();
+        builder.Property(document => document.Status)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasMaxLength(20);
 
-        builder.Property(document => document.FileHash).IsRequired();
+        builder.HasIndex(document => document.FileHash).IsUnique();
 
-        builder.Property(document => document.Status).IsRequired();
-
-        builder.HasIndex(document => document.FileHash)
-            .IsUnique();
+        builder.HasMany(document => document.Chunks)
+            .WithOne(chunk => chunk.Document)
+            .HasForeignKey(chunk => chunk.DocumentId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
