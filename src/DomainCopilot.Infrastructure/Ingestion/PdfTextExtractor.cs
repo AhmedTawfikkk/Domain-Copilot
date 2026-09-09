@@ -1,4 +1,4 @@
-﻿using DomainCopilot.Application.Documents;
+﻿using DomainCopilot.Application.Documents.Ingestion;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 

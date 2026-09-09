@@ -1,4 +1,4 @@
-﻿using DomainCopilot.Application.Documents;
+﻿using DomainCopilot.Application.Documents.Ingestion;
 using DomainCopilot.Infrastructure.Ingestion;
 using Xunit;
 
