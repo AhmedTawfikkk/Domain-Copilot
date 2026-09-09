@@ -1,4 +1,4 @@
-﻿using DomainCopilot.Application.Documents;
+﻿using DomainCopilot.Application.Documents.Ingestion;
 using DomainCopilot.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 
