@@ -1,6 +1,6 @@
 ﻿using DocumentFormat.OpenXml.Packaging;
-using DomainCopilot.Application.Documents;
 using DocumentFormat.OpenXml.Wordprocessing;
+using DomainCopilot.Application.Documents.Ingestion;
 
 
 namespace DomainCopilot.Infrastructure.Ingestion

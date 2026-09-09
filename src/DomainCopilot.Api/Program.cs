@@ -1,7 +1,9 @@
-using DomainCopilot.Application.Documents;
+using DomainCopilot.Application.Documents.Ingestion;
+using DomainCopilot.Application.Documents.Retrieval;
 using DomainCopilot.Application.Providers;
 using DomainCopilot.Infrastructure.Ingestion;
 using DomainCopilot.Infrastructure.Persistence;
+using DomainCopilot.Infrastructure.Persistence.Repositories;
 using DomainCopilot.Infrastructure.Providers;
 using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
@@ -75,6 +77,20 @@ builder.Services.AddScoped<IDocumentTextExtractor, CompositeTextExtractor>();
 builder.Services.AddScoped<ITextCleaner, LegalTextCleaner>();
 builder.Services.AddScoped<IClauseChunker, ClauseAwareChunker>();
 builder.Services.AddScoped<IDocumentIngestionService, DocumentIngestionService>();
+
+
+// ============================================================
+// Services — Embeddings and Retrieval (Day 6)
+// ============================================================
+
+builder.Services.AddScoped<IChunkRetrievalRepository,
+    ChunkRetrievalRepository>();
+
+builder.Services.AddScoped<IEmbeddingIndexingService,
+    EmbeddingIndexingService>();
+
+builder.Services.AddScoped<IChunkRetrievalService,
+    ChunkRetrievalService>();
 
 // ============================================================
 // App pipeline

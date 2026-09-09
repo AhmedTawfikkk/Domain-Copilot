@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DomainCopilot.Application.Documents
+namespace DomainCopilot.Application.Documents.Ingestion
 {
     public sealed record IngestDocumentCommand(
      string FileName,

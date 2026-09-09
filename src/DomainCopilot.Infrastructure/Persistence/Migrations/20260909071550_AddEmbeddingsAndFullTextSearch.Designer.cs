@@ -3,6 +3,7 @@ using System;
 using DomainCopilot.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using Pgvector;
 namespace DomainCopilot.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(DomainCopilotDbContext))]
-    partial class DomainCopilotDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260909071550_AddEmbeddingsAndFullTextSearch")]
+    partial class AddEmbeddingsAndFullTextSearch
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

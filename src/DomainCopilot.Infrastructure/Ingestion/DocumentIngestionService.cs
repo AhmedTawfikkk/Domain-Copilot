@@ -1,4 +1,4 @@
-﻿using DomainCopilot.Application.Documents;
+﻿using DomainCopilot.Application.Documents.Ingestion;
 using DomainCopilot.Domain.Entites;
 using DomainCopilot.Domain.Enums;
 using DomainCopilot.Infrastructure.Persistence;
