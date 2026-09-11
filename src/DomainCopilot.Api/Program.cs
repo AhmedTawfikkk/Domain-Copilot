@@ -1,3 +1,4 @@
+using DomainCopilot.Application.Documents.Answering;
 using DomainCopilot.Application.Documents.Ingestion;
 using DomainCopilot.Application.Documents.Retrieval;
 using DomainCopilot.Application.Providers;
@@ -91,6 +92,16 @@ builder.Services.AddScoped<IEmbeddingIndexingService,
 
 builder.Services.AddScoped<IChunkRetrievalService,
     ChunkRetrievalService>();
+
+// ============================================================
+// Services — Grounded Answers and Citations (Day 7)
+// ============================================================
+
+builder.Services.AddSingleton<IGroundedAnswerPromptTemplate,
+    GroundedAnswerPromptTemplate>();
+
+builder.Services.AddScoped<IGroundedAnswerService,
+    GroundedAnswerService>();
 
 // ============================================================
 // App pipeline
