@@ -85,21 +85,19 @@ namespace DomainCopilot.Application.Documents.Retrieval
                 query,
                 cancellationToken);
 
-            var denseTask = _repository.SearchDenseAsync(
-                embedding,
-                candidateCount,
-                cancellationToken);
+            var denseResults = await _repository.SearchDenseAsync(
+      embedding,
+      candidateCount,
+      cancellationToken);
 
-            var keywordTask = _repository.SearchKeywordAsync(
+            var keywordResults = await _repository.SearchKeywordAsync(
                 query,
                 candidateCount,
                 cancellationToken);
 
-            await Task.WhenAll(denseTask, keywordTask);
-
             return FuseByReciprocalRank(
-                denseTask.Result,
-                keywordTask.Result,
+                denseResults,
+                keywordResults,
                 limit);
         }
 
