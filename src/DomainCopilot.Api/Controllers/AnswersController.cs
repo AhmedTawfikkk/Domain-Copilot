@@ -1,0 +1,44 @@
+﻿using DomainCopilot.Application.Documents.Answering;
+using Microsoft.AspNetCore.Mvc;
+
+namespace DomainCopilot.Api.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public sealed class AnswersController : ControllerBase
+{
+    private readonly IGroundedAnswerService _groundedAnswerService;
+
+    public AnswersController(
+        IGroundedAnswerService groundedAnswerService)
+    {
+        _groundedAnswerService = groundedAnswerService;
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<GroundedAnswerResult>> Answer(
+        [FromBody] AnswerRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var result = await _groundedAnswerService.AnswerAsync(
+                request,
+                cancellationToken);
+
+            return result.Status == AnswerStatus.Refused
+                ? UnprocessableEntity(result)
+                : Ok(result);
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(exception.Message);
+        }
+        catch (InvalidOperationException exception)
+        {
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                new { error = exception.Message });
+        }
+    }
+}
