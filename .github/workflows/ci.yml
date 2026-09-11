@@ -34,7 +34,7 @@ jobs:
         run: dotnet list package --vulnerable --include-transitive
         continue-on-error: true
 
-  secret-scan:
+secret-scan:
     runs-on: ubuntu-latest
 
     steps:
@@ -43,7 +43,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run Gitleaks secret scan
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install and run Gitleaks
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks detect --source . --verbose --redact --exit-code 1
