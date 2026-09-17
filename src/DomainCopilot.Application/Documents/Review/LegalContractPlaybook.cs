@@ -11,6 +11,7 @@ public sealed class LegalContractPlaybook : IContractReviewPlaybook
         AssessLimitationOfLiability(request.Clauses, findings);
         AssessIndemnification(request.Clauses, findings);
         AssessConfidentiality(request.Clauses, findings);
+        AssessIntellectualProperty(request.Clauses, findings);
         AssessTermination(request.Clauses, findings);
         AssessGoverningLaw(request.Clauses, findings);
 
@@ -60,13 +61,7 @@ public sealed class LegalContractPlaybook : IContractReviewPlaybook
                     clause.DocumentChunkId));
             }
 
-            if (!ContainsAny(
-                    clause.EvidenceText,
-                    "indirect",
-                    "consequential",
-                    "incidental",
-                    "special",
-                    "punitive"))
+            if (!HasIndirectDamagesExclusion(clause.EvidenceText))
             {
                 findings.Add(new RiskFinding(
                     "PB-LIAB-003",
@@ -75,6 +70,39 @@ public sealed class LegalContractPlaybook : IContractReviewPlaybook
                     "Indirect-damages exclusion is not evident",
                     "The identified liability clause does not clearly exclude indirect or consequential damages.",
                     "Consider excluding indirect, incidental, special, and consequential damages.",
+                    clause.DocumentChunkId));
+            }
+        }
+    }
+
+    private static void AssessIntellectualProperty(
+        IReadOnlyList<ExtractedClause> clauses,
+        ICollection<RiskFinding> findings)
+    {
+        var intellectualPropertyClauses = FindClauses(
+            clauses,
+            LegalClauseType.IntellectualProperty);
+
+        foreach (var clause in intellectualPropertyClauses)
+        {
+            if (ContainsAny(
+                    clause.EvidenceText,
+                    "discuss and agree in good faith",
+                    "ownership of any such intellectual property",
+                    "no obligation to assign") &&
+                !ContainsAny(
+                    clause.EvidenceText,
+                    "hereby assigns",
+                    "owned exclusively",
+                    "shall be owned"))
+            {
+                findings.Add(new RiskFinding(
+                    "PB-IP-001",
+                    LegalClauseType.IntellectualProperty,
+                    RiskSeverity.Medium,
+                    "Deliverable intellectual-property ownership is unclear",
+                    "The clause defers ownership of newly created intellectual property and does not provide an assignment.",
+                    "Define ownership of deliverables and any required assignment or license before performance begins.",
                     clause.DocumentChunkId));
             }
         }
@@ -119,6 +147,7 @@ public sealed class LegalContractPlaybook : IContractReviewPlaybook
                     "Specify the indemnifying party's duty to defend and the defense-control process.",
                     clause.DocumentChunkId));
             }
+
         }
     }
 
@@ -126,9 +155,14 @@ public sealed class LegalContractPlaybook : IContractReviewPlaybook
         IReadOnlyList<ExtractedClause> clauses,
         ICollection<RiskFinding> findings)
     {
+        // Classification is probabilistic. A definitions chunk can mention
+        // "Confidential Information" without imposing a confidentiality duty.
+        // Only assess a substantive obligation, not a mere defined term.
         var confidentialityClauses = FindClauses(
-            clauses,
-            LegalClauseType.Confidentiality);
+                clauses,
+                LegalClauseType.Confidentiality)
+            .Where(HasSubstantiveConfidentialityObligation)
+            .ToList();
 
         if (confidentialityClauses.Count == 0)
         {
@@ -162,6 +196,7 @@ public sealed class LegalContractPlaybook : IContractReviewPlaybook
                     "Specify an appropriate survival period for confidentiality obligations.",
                     clause.DocumentChunkId));
             }
+
         }
     }
 
@@ -202,6 +237,25 @@ public sealed class LegalContractPlaybook : IContractReviewPlaybook
                     "Termination notice requirement is not evident",
                     "The termination clause does not clearly specify a notice requirement.",
                     "Specify notice form and notice period for termination.",
+                    clause.DocumentChunkId));
+            }
+
+            if (ContainsAny(
+                    clause.EvidenceText,
+                    "terminate this Agreement for convenience",
+                    "terminate for convenience") &&
+                ContainsAny(
+                    clause.EvidenceText,
+                    "effective immediately upon delivery",
+                    "without any cure period or advance notice"))
+            {
+                findings.Add(new RiskFinding(
+                    "PB-TERM-003",
+                    LegalClauseType.Termination,
+                    RiskSeverity.Medium,
+                    "Termination for convenience has no advance notice",
+                    "Either party may terminate for convenience immediately, without an advance notice period.",
+                    "Consider requiring written advance notice for termination for convenience.",
                     clause.DocumentChunkId));
             }
         }
@@ -267,5 +321,45 @@ public sealed class LegalContractPlaybook : IContractReviewPlaybook
             value.Contains(
                 term,
                 StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool HasIndirectDamagesExclusion(string evidenceText)
+    {
+        var explicitlyNotExcluded = ContainsAny(
+            evidenceText,
+            "no such damages shall be excluded",
+            "damages are not excluded",
+            "shall not be excluded");
+
+        if (explicitlyNotExcluded)
+        {
+            return false;
+        }
+
+        return ContainsAny(
+                   evidenceText,
+                   "in no event shall either party be liable",
+                   "shall not be liable for any indirect",
+                   "neither party shall be liable for any indirect") &&
+               ContainsAny(
+                   evidenceText,
+                   "indirect",
+                   "consequential",
+                   "incidental",
+                   "special",
+                   "punitive");
+    }
+
+    private static bool HasSubstantiveConfidentialityObligation(
+        ExtractedClause clause)
+    {
+        return ContainsAny(
+            clause.EvidenceText,
+            "shall keep confidential",
+            "shall maintain confidentiality",
+            "shall not disclose",
+            "duty of confidentiality",
+            "confidentiality obligations",
+            "obligation of confidentiality");
     }
 }
