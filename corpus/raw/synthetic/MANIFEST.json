@@ -1,0 +1,881 @@
+{
+  "corpus": "Domain Copilot Synthetic Legal Contract Demo Corpus",
+  "disclaimer": "All content is fully synthetic. No real contracts, companies, or persons.",
+  "total_documents": 30,
+  "documents": [
+    {
+      "file_name": "01_Master_Services_Agreement.pdf",
+      "contract_type": "Master Services Agreement",
+      "format": "PDF",
+      "parties": [
+        "Riverside Retail Group Inc.",
+        "Silverline Technologies Ltd."
+      ],
+      "risk_profile": "High Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Unreasonable late-payment interest (5% monthly compounded)",
+        "Weak data-protection obligations (no specific measures)",
+        "Unclear intellectual-property ownership (no assignment)",
+        "Uncapped indemnification (no monetary limit)",
+        "Indemnity clause lacks express duty to defend"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "02_SaaS_Subscription_Agreement.txt",
+      "contract_type": "SaaS Subscription Agreement",
+      "format": "TXT",
+      "parties": [
+        "Redstone Cloud Networks Ltd.",
+        "Evergreen Cyber Solutions Inc."
+      ],
+      "risk_profile": "Compliant",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "03_Software_License_Agreement.pdf",
+      "contract_type": "Software License Agreement",
+      "format": "PDF",
+      "parties": [
+        "Quartz Ridge Consulting LLC",
+        "Crystal River Networks Ltd."
+      ],
+      "risk_profile": "High Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Weak data-protection obligations (no specific measures)",
+        "Limitation-of-liability clause has no monetary cap",
+        "No exclusion of indirect or consequential damages"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "04_Professional_Services_Agreement.txt",
+      "contract_type": "Professional Services Agreement",
+      "format": "TXT",
+      "parties": [
+        "Quartz Ridge Consulting LLC",
+        "Copperline Logistics Ltd."
+      ],
+      "risk_profile": "Compliant",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "05_Data_Processing_Agreement.pdf",
+      "contract_type": "Data Processing Agreement",
+      "format": "PDF",
+      "parties": [
+        "Summit Forge Technologies Inc.",
+        "Riverside Retail Group Inc."
+      ],
+      "risk_profile": "High Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Weak data-protection obligations (no specific measures)",
+        "Unclear intellectual-property ownership (no assignment)",
+        "Limitation-of-liability clause has no monetary cap",
+        "Missing dispute-resolution process (no arbitration)"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "06_Mutual_Non-Disclosure_Agreement.txt",
+      "contract_type": "Mutual Non-Disclosure Agreement",
+      "format": "TXT",
+      "parties": [
+        "Ironwood Data Services LLC",
+        "Redstone Cloud Networks Ltd."
+      ],
+      "risk_profile": "High Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 CONFIDENTIALITY",
+        "SECTION 3 PERMITTED DISCLOSURES",
+        "SECTION 4 TERM AND SURVIVAL",
+        "SECTION 5 NO LICENSE OR WARRANTY",
+        "SECTION 6 REMEDIES",
+        "SECTION 7 GOVERNING LAW",
+        "SECTION 8 DISPUTE RESOLUTION",
+        "SECTION 9 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Confidentiality survival period not fixed (vague)"
+      ],
+      "approximate_clause_count": 9
+    },
+    {
+      "file_name": "07_Mutual_NDA_and_Services_Agreement.pdf",
+      "contract_type": "Mutual NDA and Services Agreement",
+      "format": "PDF",
+      "parties": [
+        "Quartz Ridge Consulting LLC",
+        "Ironwood Data Services LLC"
+      ],
+      "risk_profile": "Medium Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Weak data-protection obligations (no specific measures)",
+        "Uncapped indemnification (no monetary limit)"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "08_Employment_Agreement.txt",
+      "contract_type": "Employment Agreement",
+      "format": "TXT",
+      "parties": [
+        "Northstar Digital Solutions LLC",
+        "Granite Bay Software LLC"
+      ],
+      "risk_profile": "Medium Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Confidentiality survival period not fixed (vague)",
+        "Weak data-protection obligations (no specific measures)"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "09_Independent_Contractor_Agreement.pdf",
+      "contract_type": "Independent Contractor Agreement",
+      "format": "PDF",
+      "parties": [
+        "Highland Research Institute LLC",
+        "Ironwood Data Services LLC"
+      ],
+      "risk_profile": "High Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Unclear intellectual-property ownership (no assignment)",
+        "Uncapped indemnification (no monetary limit)",
+        "No exclusion of indirect or consequential damages",
+        "Insufficient termination notice (immediate effect on delivery)"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "10_Reseller_Agreement.txt",
+      "contract_type": "Reseller Agreement",
+      "format": "TXT",
+      "parties": [
+        "Stonebridge Capital Partners LP",
+        "Summit Forge Technologies Inc."
+      ],
+      "risk_profile": "High Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Unreasonable late-payment interest (5% monthly compounded)",
+        "Confidentiality survival period not fixed (vague)",
+        "Data breach notification timing vague (no fixed hours)",
+        "Uncapped indemnification (no monetary limit)",
+        "No exclusion of indirect or consequential damages",
+        "Missing dispute-resolution process (no arbitration)"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "11_Distribution_Agreement.pdf",
+      "contract_type": "Distribution Agreement",
+      "format": "PDF",
+      "parties": [
+        "Northstar Digital Solutions LLC",
+        "Stonebridge Capital Partners LP"
+      ],
+      "risk_profile": "High Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Unreasonable late-payment interest (5% monthly compounded)",
+        "Data breach notification timing vague (no fixed hours)",
+        "Indemnity clause lacks express duty to defend",
+        "No exclusion of indirect or consequential damages",
+        "Insufficient termination notice (immediate effect on delivery)"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "12_Vendor_Supply_Agreement.txt",
+      "contract_type": "Vendor Supply Agreement",
+      "format": "TXT",
+      "parties": [
+        "Pinecrest Manufacturing LLC",
+        "Westwind Health Systems Inc."
+      ],
+      "risk_profile": "High Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Unreasonable late-payment interest (5% monthly compounded)",
+        "Uncapped indemnification (no monetary limit)",
+        "Limitation-of-liability clause has no monetary cap",
+        "Insufficient termination notice (immediate effect on delivery)",
+        "Missing governing-law jurisdiction"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "13_Procurement_Agreement.pdf",
+      "contract_type": "Procurement Agreement",
+      "format": "PDF",
+      "parties": [
+        "Highland Research Institute LLC",
+        "Summit Forge Technologies Inc."
+      ],
+      "risk_profile": "High Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Unreasonable late-payment interest (5% monthly compounded)",
+        "Data breach notification timing vague (no fixed hours)",
+        "Unclear intellectual-property ownership (no assignment)",
+        "Limitation-of-liability clause has no monetary cap",
+        "Missing dispute-resolution process (no arbitration)"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "14_Maintenance_and_Support_Agreement.txt",
+      "contract_type": "Maintenance and Support Agreement",
+      "format": "TXT",
+      "parties": [
+        "Evergreen Cyber Solutions Inc.",
+        "Harborlight Media Corp."
+      ],
+      "risk_profile": "High Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Confidentiality survival period not fixed (vague)",
+        "Indemnity clause lacks express duty to defend",
+        "No exclusion of indirect or consequential damages",
+        "Insufficient termination notice (immediate effect on delivery)"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "15_Cloud_Hosting_Agreement.pdf",
+      "contract_type": "Cloud Hosting Agreement",
+      "format": "PDF",
+      "parties": [
+        "Ironwood Data Services LLC",
+        "Westwind Health Systems Inc."
+      ],
+      "risk_profile": "High Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Unreasonable late-payment interest (5% monthly compounded)",
+        "Data breach notification timing vague (no fixed hours)",
+        "Unclear intellectual-property ownership (no assignment)",
+        "Indemnity clause lacks express duty to defend",
+        "No exclusion of indirect or consequential damages",
+        "Insufficient termination notice (immediate effect on delivery)"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "16_API_Access_Agreement.txt",
+      "contract_type": "API Access Agreement",
+      "format": "TXT",
+      "parties": [
+        "Ironwood Data Services LLC",
+        "Silverline Technologies Ltd."
+      ],
+      "risk_profile": "Compliant",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "17_Partnership_Agreement.pdf",
+      "contract_type": "Partnership Agreement",
+      "format": "PDF",
+      "parties": [
+        "Copperline Logistics Ltd.",
+        "Ironwood Data Services LLC"
+      ],
+      "risk_profile": "High Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Unreasonable late-payment interest (5% monthly compounded)",
+        "Weak data-protection obligations (no specific measures)",
+        "Uncapped indemnification (no monetary limit)",
+        "Liability cap unusually low ($25,000)"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "18_Co-Marketing_Agreement.txt",
+      "contract_type": "Co-Marketing Agreement",
+      "format": "TXT",
+      "parties": [
+        "Ironwood Data Services LLC",
+        "Cedar Peak Systems Corp."
+      ],
+      "risk_profile": "Medium Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Confidentiality survival period not fixed (vague)",
+        "Missing governing-law jurisdiction",
+        "Missing dispute-resolution process (no arbitration)"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "19_Affiliate_Agreement.pdf",
+      "contract_type": "Affiliate Agreement",
+      "format": "PDF",
+      "parties": [
+        "Lakeshore Software Group Inc.",
+        "Cedar Peak Systems Corp."
+      ],
+      "risk_profile": "Medium Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Confidentiality survival period not fixed (vague)",
+        "Weak data-protection obligations (no specific measures)",
+        "Insufficient termination notice (immediate effect on delivery)"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "20_Consulting_Agreement.txt",
+      "contract_type": "Consulting Agreement",
+      "format": "TXT",
+      "parties": [
+        "Silverline Technologies Ltd.",
+        "Highland Research Institute LLC"
+      ],
+      "risk_profile": "Medium Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Data breach notification extended to 120 hours (5 days)",
+        "Uncapped indemnification (no monetary limit)",
+        "No exclusion of indirect or consequential damages"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "21_Franchise_Agreement.pdf",
+      "contract_type": "Franchise Agreement",
+      "format": "PDF",
+      "parties": [
+        "Harborlight Media Corp.",
+        "Cedar Peak Systems Corp."
+      ],
+      "risk_profile": "High Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Unreasonable late-payment interest (5% monthly compounded)",
+        "Weak data-protection obligations (no specific measures)",
+        "Unclear intellectual-property ownership (no assignment)",
+        "Limitation-of-liability clause has no monetary cap",
+        "Missing governing-law jurisdiction",
+        "Missing dispute-resolution process (no arbitration)"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "22_Commercial_Lease_Agreement.txt",
+      "contract_type": "Commercial Lease Agreement",
+      "format": "TXT",
+      "parties": [
+        "Ironwood Data Services LLC",
+        "Summit Forge Technologies Inc."
+      ],
+      "risk_profile": "High Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Data breach notification extended to 120 hours (5 days)",
+        "Unclear intellectual-property ownership (no assignment)",
+        "Insufficient termination notice (immediate effect on delivery)",
+        "Missing dispute-resolution process (no arbitration)"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "23_Loan_Agreement.pdf",
+      "contract_type": "Loan Agreement",
+      "format": "PDF",
+      "parties": [
+        "Oakstone Financial Services Corp.",
+        "Harborlight Media Corp."
+      ],
+      "risk_profile": "High Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Data breach notification extended to 120 hours (5 days)",
+        "Unclear intellectual-property ownership (no assignment)",
+        "Uncapped indemnification (no monetary limit)",
+        "Liability cap unusually low ($25,000)",
+        "Missing governing-law jurisdiction",
+        "Missing dispute-resolution process (no arbitration)"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "24_Share_Purchase_Agreement.txt",
+      "contract_type": "Share Purchase Agreement",
+      "format": "TXT",
+      "parties": [
+        "Harborlight Media Corp.",
+        "Copperline Logistics Ltd."
+      ],
+      "risk_profile": "Medium Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Data breach notification timing vague (no fixed hours)",
+        "Unclear intellectual-property ownership (no assignment)",
+        "No exclusion of indirect or consequential damages"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "25_Joint_Venture_Agreement.pdf",
+      "contract_type": "Joint Venture Agreement",
+      "format": "PDF",
+      "parties": [
+        "Copperline Logistics Ltd.",
+        "Crystal River Networks Ltd."
+      ],
+      "risk_profile": "Medium Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Limitation-of-liability clause has no monetary cap",
+        "No exclusion of indirect or consequential damages"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "26_Manufacturing_Agreement.txt",
+      "contract_type": "Manufacturing Agreement",
+      "format": "TXT",
+      "parties": [
+        "Pinecrest Manufacturing LLC",
+        "Redstone Cloud Networks Ltd."
+      ],
+      "risk_profile": "Medium Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Unclear intellectual-property ownership (no assignment)",
+        "Indemnity clause lacks express duty to defend",
+        "Missing governing-law jurisdiction"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "27_Logistics_Services_Agreement.pdf",
+      "contract_type": "Logistics Services Agreement",
+      "format": "PDF",
+      "parties": [
+        "Oakstone Financial Services Corp.",
+        "Ironwood Data Services LLC"
+      ],
+      "risk_profile": "Medium Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Unreasonable late-payment interest (5% monthly compounded)",
+        "Indemnity clause lacks express duty to defend"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "28_Marketing_Services_Agreement.txt",
+      "contract_type": "Marketing Services Agreement",
+      "format": "TXT",
+      "parties": [
+        "Pinecrest Manufacturing LLC",
+        "Evergreen Cyber Solutions Inc."
+      ],
+      "risk_profile": "Medium Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Data breach notification timing vague (no fixed hours)",
+        "Uncapped indemnification (no monetary limit)",
+        "Insufficient termination notice (immediate effect on delivery)"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "29_Intellectual_Property_License_Agreement.pdf",
+      "contract_type": "Intellectual Property License Agreement",
+      "format": "PDF",
+      "parties": [
+        "Cedar Peak Systems Corp.",
+        "Blue Harbor Analytics Inc."
+      ],
+      "risk_profile": "Medium Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Data breach notification extended to 120 hours (5 days)",
+        "No exclusion of indirect or consequential damages",
+        "Insufficient termination notice (immediate effect on delivery)"
+      ],
+      "approximate_clause_count": 11
+    },
+    {
+      "file_name": "30_Business_Associate_Agreement.txt",
+      "contract_type": "Business Associate Agreement",
+      "format": "TXT",
+      "parties": [
+        "Summit Forge Technologies Inc.",
+        "Highland Research Institute LLC"
+      ],
+      "risk_profile": "Medium Risk",
+      "clause_types": [
+        "SECTION 1 DEFINITIONS",
+        "SECTION 2 PAYMENT",
+        "SECTION 3 CONFIDENTIALITY",
+        "SECTION 4 DATA PROTECTION",
+        "SECTION 5 INTELLECTUAL PROPERTY",
+        "SECTION 6 INDEMNIFICATION",
+        "SECTION 7 LIMITATION OF LIABILITY",
+        "SECTION 8 TERMINATION",
+        "SECTION 9 GOVERNING LAW",
+        "SECTION 10 DISPUTE RESOLUTION",
+        "SECTION 11 MISCELLANEOUS"
+      ],
+      "intentional_deviations": [
+        "Data breach notification extended to 120 hours (5 days)",
+        "Uncapped indemnification (no monetary limit)"
+      ],
+      "approximate_clause_count": 11
+    }
+  ]
+}
