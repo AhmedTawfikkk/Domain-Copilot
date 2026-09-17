@@ -63,6 +63,7 @@ namespace DomainCopilot.Infrastructure.Providers
             }
             catch (Exception ex)
             {
+               
                 _logger.LogWarning(ex, "Primary LLM provider failed for embeddings, falling back to secondary provider.");
                 return await _fallback.EmbedAsync(text, ct);
             }

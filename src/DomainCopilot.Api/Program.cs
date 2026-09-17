@@ -1,6 +1,7 @@
 using DomainCopilot.Application.Documents.Answering;
 using DomainCopilot.Application.Documents.Ingestion;
 using DomainCopilot.Application.Documents.Retrieval;
+using DomainCopilot.Application.Documents.Review;
 using DomainCopilot.Application.Providers;
 using DomainCopilot.Infrastructure.Ingestion;
 using DomainCopilot.Infrastructure.Persistence;
@@ -44,6 +45,8 @@ builder.Services.AddDbContext<DomainCopilotDbContext>(options =>
 builder.Services.AddHttpClient<OllamaProvider>();
 builder.Services.AddScoped<OllamaProvider>();
 
+
+//groq
 builder.Services.AddScoped(sp =>
 {
     var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
@@ -52,18 +55,42 @@ builder.Services.AddScoped(sp =>
     return new GroqProvider(httpClient, apiKey);
 });
 
+
+// gemini
+builder.Services.AddScoped(sp =>
+{
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var httpClient = httpClientFactory.CreateClient("gemini");
+    var apiKey = Environment.GetEnvironmentVariable("LLM_API_KEY") ?? string.Empty;
+    return new GeminiProvider(httpClient, apiKey);
+});
+
 // The active ILlmProvider is selected here based on config (LLM_PROVIDER env var)
+//builder.Services.AddScoped<ILlmProvider>(sp =>
+//{
+//    var providerName = builder.Configuration["LLM_PROVIDER"] ?? "ollama";
+//    var ollama = sp.GetRequiredService<OllamaProvider>();
+//    var groq = sp.GetRequiredService<GroqProvider>();
+//    var logger = sp.GetRequiredService<ILogger<FallbackLlmProvider>>();
+
+//    return providerName.ToLowerInvariant() switch
+//    {
+//        "groq" => new FallbackLlmProvider(groq, ollama, logger),
+//        _ => new FallbackLlmProvider(ollama, groq, logger)
+//    };
+//});
+
 builder.Services.AddScoped<ILlmProvider>(sp =>
 {
-    var providerName = builder.Configuration["LLM_PROVIDER"] ?? "ollama";
+    var providerName = builder.Configuration["LLM_PROVIDER"] ?? "gemini";
     var ollama = sp.GetRequiredService<OllamaProvider>();
-    var groq = sp.GetRequiredService<GroqProvider>();
+    var gemini = sp.GetRequiredService<GeminiProvider>();
     var logger = sp.GetRequiredService<ILogger<FallbackLlmProvider>>();
 
     return providerName.ToLowerInvariant() switch
     {
-        "groq" => new FallbackLlmProvider(groq, ollama, logger),
-        _ => new FallbackLlmProvider(ollama, groq, logger)
+        "ollama" => new FallbackLlmProvider(ollama, gemini, logger), 
+        _ => new FallbackLlmProvider(gemini, ollama, logger) // default: gemini primary
     };
 });
 
@@ -104,6 +131,53 @@ builder.Services.AddScoped<IGroundedAnswerService,
     GroundedAnswerService>();
 
 // ============================================================
+// Services — Clause Extractor, Risk Assessor, and Orchestration (Day 8)
+// ============================================================
+
+var reviewPolicy = new ReviewExecutionPolicy();
+
+builder.Configuration
+    .GetSection("LegalReview")
+    .Bind(reviewPolicy);
+
+reviewPolicy.Validate();
+
+builder.Services.AddSingleton(reviewPolicy);
+
+builder.Services.AddScoped<IDocumentReviewRepository,
+    DocumentReviewRepository>();
+
+builder.Services.AddSingleton<IClauseExtractionPromptTemplate,
+    ClauseExtractionPromptTemplate>();
+
+builder.Services.AddScoped<IClauseExtractorAgent,
+    ClauseExtractorAgent>();
+
+builder.Services.AddSingleton<IContractReviewPlaybook,
+    LegalContractPlaybook>();
+
+builder.Services.AddScoped<IRiskAssessorAgent,
+    RiskAssessorAgent>();
+
+builder.Services.AddScoped<ILegalReviewOrchestrator,
+    LegalReviewOrchestrator>();
+
+// ============================================================
+// Services — Memo Drafting and Persistence (Day 9)
+// ============================================================
+
+builder.Services.AddSingleton<IMemoDraftPromptTemplate,
+    MemoDraftPromptTemplate>();
+
+builder.Services.AddScoped<IMemoDrafterAgent,
+    MemoDrafterAgent>();
+
+builder.Services.AddScoped<IReviewMemoRepository,
+    ReviewMemoRepository>();
+builder.Services.AddScoped<IMemoApprovalService,
+    MemoApprovalService>();
+
+// ============================================================
 // App pipeline
 // ============================================================
 
@@ -118,7 +192,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.MapControllers();
 
-// Temporary test endpoint — will be replaced by the real /api/query endpoint on Day 7
+
 app.MapPost("/test/complete", async (ILlmProvider provider, TestCompleteRequest request) =>
 {
     var result = await provider.CompleteAsync(

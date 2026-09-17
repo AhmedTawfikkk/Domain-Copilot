@@ -16,8 +16,10 @@ Domain <- Application <- Infrastructure <- API
 - Domain and Application do not reference LLM SDKs, vector-store SDKs, EF Core,
   or web frameworks.
 - `ILlmProvider` is the provider abstraction used by Application services.
-- Groq, Ollama, PostgreSQL, pgvector, EF Core, and HTTP clients remain
+- Gemini, Groq, Ollama, PostgreSQL, pgvector, EF Core, and HTTP clients remain
   Infrastructure concerns.
+- The active hosted provider chain is `Gemini -> Ollama`; `LLM_PROVIDER=ollama`
+  reverses it for local-first testing. Groq is retained as an inactive adapter.
 - API controllers call Application contracts and do not contain business logic.
 - Prompts are versioned files, not C# string literals.
 - Agent-to-agent data uses typed C# contracts rather than unvalidated text.
@@ -34,6 +36,8 @@ Documents/Answering/Prompts/
 Documents/Review/Prompts/
   ClauseExtraction.System.v1.md
   ClauseExtraction.User.v1.md
+  MemoDraft.System.v1.md
+  MemoDraft.User.v1.md
 ```
 
 System prompts contain fixed rules, security constraints, and output contracts.
@@ -87,12 +91,31 @@ The application refuses an answer when:
 - Enforces batching, timeouts, and termination conditions.
 - Does not bypass typed agent contracts.
 
+### Memo Drafter
+
+- Input: typed extracted clauses and typed `RiskFinding` records.
+- Output: a draft memo with cited source chunk IDs.
+- Allowed tool: `ILlmProvider`.
+- Treats Risk Assessor findings as the complete risk list; it must not invent
+  additional findings or recommendations.
+
+### Counsel Approval Gate
+
+- A memo is persisted as `Draft` after review.
+- Counsel can approve, reject, or edit-and-approve the draft through typed API
+  requests.
+- No future finalization, export, or send operation may use a memo unless its
+  status is `Approved`.
+
 ```text
 Document Chunks
   -> Clause Extractor
   -> Extracted Clauses
   -> Risk Assessor
   -> Risk Findings
+  -> Memo Drafter
+  -> Draft Memo
+  -> Counsel Approval Gate
 ```
 
 ## Workflow Controls
@@ -104,6 +127,8 @@ The review workflow currently applies:
 - Maximum extraction batch count.
 - Clause Extractor timeout.
 - Risk Assessor timeout.
+- Memo Drafter timeout.
+- Bounded retry with exponential backoff for transient agent failures.
 - Explicit workflow termination reasons.
 - Strict validation that every supplied chunk has one valid extraction result.
 
@@ -138,7 +163,9 @@ Architecture decisions are captured in ADRs:
 - ADR-0001: Provider abstraction.
 - ADR-0002: Chunking strategy.
 - ADR-0003: Embeddings and hybrid retrieval.
+- ADR-0004: Grounded answers and citations.
 - ADR-0005: Pipeline agent orchestration.
+- ADR-0006: Memo drafting and counsel approval.
 
 Material AI assistance, developer verification, and corrected suggestions are
 recorded in `docs/AI-USAGE-LOG.md`.
@@ -147,9 +174,6 @@ recorded in `docs/AI-USAGE-LOG.md`.
 
 The following are not implemented yet:
 
-- Memo Drafter agent.
-- Counsel Human Approval Gate.
-- Retry with exponential backoff.
 - Graceful fallback from an agentic-review failure to plain grounded RAG.
 - GitHub Actions automated quality gate.
 - Repository-level coding-agent instruction file.
@@ -162,6 +186,6 @@ During manual testing, larger Clause Extractor batches caused some LLM responses
 to contain malformed JSON, omit chunk results, or use unsupported clause types.
 
 The strict typed-output validation correctly stopped the workflow before Risk
-Assessment. The current mitigation is smaller extraction batches and clearer
-prompt instructions. Structured output, retry/backoff, and graceful RAG
-fallback are planned improvements.
+Assessment. The current mitigation is smaller extraction batches, clearer
+prompt instructions, JSON output mode for Gemini, and bounded retry/backoff.
+Graceful RAG fallback remains a planned improvement.
