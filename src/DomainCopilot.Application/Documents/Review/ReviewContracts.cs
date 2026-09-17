@@ -47,7 +47,10 @@ namespace DomainCopilot.Application.Documents.Review
         ClauseExtractorTimedOut = 7,
         ClauseExtractorFailed = 8,
         RiskAssessorTimedOut = 9,
-        RiskAssessorFailed = 10
+        RiskAssessorFailed = 10,
+        MemoDrafterTimedOut = 11,
+        MemoDrafterFailed = 12,
+        MemoPersistenceFailed = 13
     }
 
     public sealed record LegalReviewRequest(
@@ -106,13 +109,14 @@ namespace DomainCopilot.Application.Documents.Review
         IReadOnlyList<RiskFinding> Findings);
 
     public sealed record LegalReviewResult(
-        LegalReviewStatus Status,
-        Guid DocumentId,
-        string? FileName,
-        IReadOnlyList<ExtractedClause> ExtractedClauses,
-        IReadOnlyList<RiskFinding> RiskFindings,
-        ReviewTerminationReason TerminationReason,
-        string? TerminationMessage);
+      LegalReviewStatus Status,
+      Guid DocumentId,
+      string? FileName,
+      IReadOnlyList<ExtractedClause> ExtractedClauses,
+      IReadOnlyList<RiskFinding> RiskFindings,
+      ReviewTerminationReason TerminationReason,
+      string? TerminationMessage,
+      ReviewMemoDraft? MemoDraft = null);
 
     public sealed record ClauseExtractionPrompts(
         string SystemPrompt,
@@ -131,6 +135,11 @@ namespace DomainCopilot.Application.Documents.Review
         public int ClauseExtractorTimeoutSeconds { get; init; } = 45;
 
         public int RiskAssessorTimeoutSeconds { get; init; } = 5;
+        public int MemoDrafterTimeoutSeconds { get; init; } = 45;
+
+        public int AgentMaxAttempts { get; init; } = 3;
+
+        public int RetryBaseDelayMilliseconds { get; init; } = 1_000;
 
         public void Validate()
         {
@@ -168,6 +177,23 @@ namespace DomainCopilot.Application.Documents.Review
             {
                 throw new InvalidOperationException(
                     "RiskAssessorTimeoutSeconds must be between 1 and 30.");
+            }
+            if (MemoDrafterTimeoutSeconds is < 5 or > 120)
+            {
+                throw new InvalidOperationException(
+                    "MemoDrafterTimeoutSeconds must be between 5 and 120.");
+            }
+
+            if (AgentMaxAttempts is < 1 or > 5)
+            {
+                throw new InvalidOperationException(
+                    "AgentMaxAttempts must be between 1 and 5.");
+            }
+
+            if (RetryBaseDelayMilliseconds is < 100 or > 5_000)
+            {
+                throw new InvalidOperationException(
+                    "RetryBaseDelayMilliseconds must be between 100 and 5000.");
             }
         }
     }

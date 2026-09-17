@@ -1,21 +1,31 @@
-﻿namespace DomainCopilot.Application.Documents.Review;
+﻿using System.Diagnostics;
+using DomainCopilot.Domain.Entites;
+using DomainCopilot.Domain.Enums;
+
+namespace DomainCopilot.Application.Documents.Review;
 
 public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
 {
     private readonly IDocumentReviewRepository _documentReviewRepository;
     private readonly IClauseExtractorAgent _clauseExtractorAgent;
     private readonly IRiskAssessorAgent _riskAssessorAgent;
+    private readonly IMemoDrafterAgent _memoDrafterAgent;
+    private readonly IReviewMemoRepository _reviewMemoRepository;
     private readonly ReviewExecutionPolicy _policy;
 
     public LegalReviewOrchestrator(
         IDocumentReviewRepository documentReviewRepository,
         IClauseExtractorAgent clauseExtractorAgent,
         IRiskAssessorAgent riskAssessorAgent,
+        IMemoDrafterAgent memoDrafterAgent,
+        IReviewMemoRepository reviewMemoRepository,
         ReviewExecutionPolicy policy)
     {
         _documentReviewRepository = documentReviewRepository;
         _clauseExtractorAgent = clauseExtractorAgent;
         _riskAssessorAgent = riskAssessorAgent;
+        _memoDrafterAgent = memoDrafterAgent;
+        _reviewMemoRepository = reviewMemoRepository;
         _policy = policy;
     }
 
@@ -47,7 +57,7 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
                 "The requested document was not found.");
         }
 
-        if (document.Status == Domain.Enums.DocumentStatus.Failed)
+        if (document.Status == DocumentStatus.Failed)
         {
             return Terminate(
                 document.DocumentId,
@@ -74,7 +84,6 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
                 $"The document contains more than {_policy.MaxChunksPerReview} chunks.");
         }
 
-        var extractedClauses = new List<ExtractedClause>();
         var batches = document.Chunks
             .OrderBy(chunk => chunk.ChunkIndex)
             .Chunk(_policy.MaxChunksPerExtractionBatch)
@@ -89,28 +98,24 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
                 $"The review would require more than {_policy.MaxExtractionBatches} extraction batches.");
         }
 
+        var extractedClauses = new List<ExtractedClause>();
+
         foreach (var batch in batches)
         {
             ClauseExtractionResult extractionResult;
 
-            using var extractorTimeout =
-                CancellationTokenSource.CreateLinkedTokenSource(
-                    cancellationToken);
-
-            extractorTimeout.CancelAfter(
-                TimeSpan.FromSeconds(
-                    _policy.ClauseExtractorTimeoutSeconds));
-
             try
             {
-                extractionResult = await _clauseExtractorAgent.ExtractAsync(
-                    new ClauseExtractionRequest(
-                        document.DocumentId,
-                        batch.ToList()),
-                    extractorTimeout.Token);
+                extractionResult = await ExecuteWithRetryAsync(
+                    token => _clauseExtractorAgent.ExtractAsync(
+                        new ClauseExtractionRequest(
+                            document.DocumentId,
+                            batch.ToList()),
+                        token),
+                    _policy.ClauseExtractorTimeoutSeconds,
+                    cancellationToken);
             }
-            catch (OperationCanceledException)
-                when (!cancellationToken.IsCancellationRequested)
+            catch (TimeoutException)
             {
                 return Terminate(
                     document.DocumentId,
@@ -124,7 +129,7 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
                     document.DocumentId,
                     document.FileName,
                     ReviewTerminationReason.ClauseExtractorFailed,
-                    "The Clause Extractor could not complete the review.");
+                    "The Clause Extractor could not complete after retry attempts.");
             }
 
             if (!extractionResult.Succeeded)
@@ -142,25 +147,19 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
 
         RiskAssessmentResult riskAssessmentResult;
 
-        using var riskTimeout =
-            CancellationTokenSource.CreateLinkedTokenSource(
-                cancellationToken);
-
-        riskTimeout.CancelAfter(
-            TimeSpan.FromSeconds(
-                _policy.RiskAssessorTimeoutSeconds));
-
         try
         {
-            riskAssessmentResult = await _riskAssessorAgent.AssessAsync(
-                new RiskAssessmentRequest(
-                    document.DocumentId,
-                    document.FileName,
-                    extractedClauses),
-                riskTimeout.Token);
+            riskAssessmentResult = await ExecuteWithRetryAsync(
+                token => _riskAssessorAgent.AssessAsync(
+                    new RiskAssessmentRequest(
+                        document.DocumentId,
+                        document.FileName,
+                        extractedClauses),
+                    token),
+                _policy.RiskAssessorTimeoutSeconds,
+                cancellationToken);
         }
-        catch (OperationCanceledException)
-            when (!cancellationToken.IsCancellationRequested)
+        catch (TimeoutException)
         {
             return Terminate(
                 document.DocumentId,
@@ -174,8 +173,88 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
                 document.DocumentId,
                 document.FileName,
                 ReviewTerminationReason.RiskAssessorFailed,
-                "The Risk Assessor could not complete the review.");
+                "The Risk Assessor could not complete after retry attempts.");
         }
+
+        MemoDraftResult memoDraftResult;
+
+        try
+        {
+            memoDraftResult = await ExecuteWithRetryAsync(
+                token => _memoDrafterAgent.DraftAsync(
+                    new MemoDraftRequest(
+                        document.DocumentId,
+                        document.FileName,
+                        document.Source,
+                        document.Version,
+                        extractedClauses,
+                        riskAssessmentResult.Findings),
+                    token),
+                _policy.MemoDrafterTimeoutSeconds,
+                cancellationToken);
+        }
+        catch (TimeoutException)
+        {
+            return Terminate(
+                document.DocumentId,
+                document.FileName,
+                ReviewTerminationReason.MemoDrafterTimedOut,
+                "The Memo Drafter exceeded its time limit.");
+        }
+        catch (Exception)
+        {
+            return Terminate(
+                document.DocumentId,
+                document.FileName,
+                ReviewTerminationReason.MemoDrafterFailed,
+                "The Memo Drafter could not complete after retry attempts.");
+        }
+
+        if (!memoDraftResult.Succeeded ||
+            string.IsNullOrWhiteSpace(memoDraftResult.Content))
+        {
+            return Terminate(
+                document.DocumentId,
+                document.FileName,
+                ReviewTerminationReason.MemoDrafterFailed,
+                memoDraftResult.FailureReason ??
+                "The Memo Drafter returned an invalid result.");
+        }
+
+        var memoContent = AppendVerifiedSources(
+            memoDraftResult.Content,
+            memoDraftResult.CitationChunkIds,
+            extractedClauses);
+
+        var reviewMemo = ReviewMemo.CreateDraft(
+            document.DocumentId,
+            memoContent,
+            DateTime.UtcNow);
+
+        try
+        {
+            await _reviewMemoRepository.AddAsync(
+                reviewMemo,
+                cancellationToken);
+
+            await _reviewMemoRepository.SaveChangesAsync(
+                cancellationToken);
+        }
+        catch (Exception)
+        {
+            return Terminate(
+                document.DocumentId,
+                document.FileName,
+                ReviewTerminationReason.MemoPersistenceFailed,
+                "The memo draft could not be saved.");
+        }
+
+        var memoDraft = new ReviewMemoDraft(
+            reviewMemo.Id,
+            reviewMemo.Content,
+            memoDraftResult.CitationChunkIds,
+            reviewMemo.ApprovalStatus,
+            reviewMemo.CreatedAtUtc);
 
         return new LegalReviewResult(
             LegalReviewStatus.Completed,
@@ -184,7 +263,111 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
             extractedClauses,
             riskAssessmentResult.Findings,
             ReviewTerminationReason.None,
-            null);
+            null,
+            memoDraft);
+    }
+
+    private async Task<T> ExecuteWithRetryAsync<T>(
+        Func<CancellationToken, Task<T>> action,
+        int timeoutSeconds,
+        CancellationToken cancellationToken)
+    {
+        Exception? lastException = null;
+
+        for (var attempt = 1;
+             attempt <= _policy.AgentMaxAttempts;
+             attempt++)
+        {
+            using var attemptTimeout =
+                CancellationTokenSource.CreateLinkedTokenSource(
+                    cancellationToken);
+
+            attemptTimeout.CancelAfter(
+                TimeSpan.FromSeconds(timeoutSeconds));
+
+            try
+            {
+                return await action(attemptTimeout.Token);
+            }
+            catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (OperationCanceledException)
+                when (attemptTimeout.IsCancellationRequested)
+            {
+                lastException = new TimeoutException(
+                    "The agent attempt timed out.");
+
+                if (attempt == _policy.AgentMaxAttempts)
+                {
+                    throw lastException;
+                }
+            }
+            catch (Exception exception)
+                when (IsTransientFailure(exception))
+            {
+                lastException = exception;
+
+                if (attempt == _policy.AgentMaxAttempts)
+                {
+                    throw;
+                }
+            }
+
+            var delay = GetRetryDelay(attempt);
+
+            await Task.Delay(delay, cancellationToken);
+        }
+
+        throw lastException ??
+              new InvalidOperationException(
+                  "The agent retry loop ended unexpectedly.");
+    }
+
+    private TimeSpan GetRetryDelay(int failedAttempt)
+    {
+        var multiplier = Math.Pow(2, failedAttempt - 1);
+
+        return TimeSpan.FromMilliseconds(
+            _policy.RetryBaseDelayMilliseconds * multiplier);
+    }
+
+    private static bool IsTransientFailure(Exception exception)
+    {
+        return exception is HttpRequestException ||
+               exception is TimeoutException ||
+               exception is TaskCanceledException;
+    }
+
+    private static string AppendVerifiedSources(
+        string memoContent,
+        IReadOnlyList<Guid> citationChunkIds,
+        IReadOnlyList<ExtractedClause> extractedClauses)
+    {
+        var clausesByChunkId = extractedClauses.ToDictionary(
+            clause => clause.DocumentChunkId);
+
+        var references = new List<string>();
+
+        foreach (var chunkId in citationChunkIds.Distinct())
+        {
+            if (!clausesByChunkId.TryGetValue(
+                    chunkId,
+                    out var clause))
+            {
+                continue;
+            }
+
+            references.Add(
+                $"- Chunk `{chunkId}` | " +
+                $"Section: {clause.ClauseOrSection ?? "unknown"} | " +
+                $"Page: {clause.PageNumber?.ToString() ?? "unknown"}");
+        }
+
+        return $"{memoContent.Trim()}{Environment.NewLine}{Environment.NewLine}" +
+               $"## Verified Source References{Environment.NewLine}{string.Join(Environment.NewLine, references)}";
     }
 
     private static LegalReviewResult Terminate(

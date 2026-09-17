@@ -19,6 +19,13 @@
 		<EmbeddedResource
 		  Include="Documents\Review\Prompts\ClauseExtraction.User.v1.md"
 		  LogicalName="DomainCopilot.Application.Documents.Review.Prompts.ClauseExtraction.User.v1.md" />
+		<EmbeddedResource
+  Include="Documents\Review\prompts\MemoDraft.System.v1.md"
+  LogicalName="DomainCopilot.Application.Documents.Review.prompts.MemoDraft.System.v1.md" />
+
+		<EmbeddedResource
+		  Include="Documents\Review\prompts\MemoDraft.User.v1.md"
+		  LogicalName="DomainCopilot.Application.Documents.Review.prompts.MemoDraft.User.v1.md" />
 	</ItemGroup>
 	
 	
