@@ -15,8 +15,9 @@ by the developer.
 
 - AI-assisted: discussed the provider-abstraction design and reviewed the
   `ILlmProvider` contract for completion, streaming, and embeddings.
-- Independent decision: selected Groq as the hosted provider and Ollama as the
-  local fallback provider, preserving provider selection through configuration.
+- Independent decision: initially selected Groq as the hosted provider and
+  Ollama as the local fallback provider, preserving provider selection through
+  configuration.
 - AI mistake caught: an initially suggested Groq model name was deprecated.
   A runtime 404 exposed the issue; the model configuration was corrected after
   checking the currently available provider model.
@@ -25,6 +26,23 @@ by the developer.
   was corrected and verified locally.
 - Documentation: recorded the provider decision and fallback rationale in
   ADR-0001.
+
+## Provider Decision Update - Gemini Primary
+
+- Developer verification: Groq responded correctly to small calls, but the
+  contract-review pipeline exceeded its rolling token rate limit under repeated
+  structured extraction calls. The resulting HTTP 429 responses triggered the
+  local fallback as designed.
+- Independent decision: changed the active hosted provider to Gemini and kept
+  Ollama as fallback. Gemini was selected because it supports both completion
+  and embeddings compatible with the project's 768-dimension vector schema.
+- AI mistake caught: Gemini initially returned prose or Markdown around the
+  required grounded-answer JSON. The provider request was updated to request
+  `application/json`, after which the grounded-answer endpoint returned a
+  validated answer with citations.
+- Groq remains as an adapter for future comparison or reactivation; it is not
+  the active provider chain. ADR-0001 was amended to record the reversible
+  decision and operational reason.
 
 ## Day 5 - Ingestion Pipeline
 
@@ -98,3 +116,19 @@ by the developer.
   `Unknown` or `Other` for non-target clauses.
 - Documentation: recorded the pipeline orchestration decision, restricted tool
   sets, timeout policy, and termination conditions in ADR-0005.
+
+## Day 9 - Memo Drafter and Human Approval Gate
+
+- AI-assisted: reviewed the typed Memo Drafter contract, structured-output
+  validation, source-citation validation, retry/backoff strategy, and approval
+  state model.
+- Developer implementation and verification: added draft memo persistence and
+  explicit counsel actions: approve, reject, and edit-and-approve.
+- Independent decision: a generated memo is stored as `Draft`; it is never
+  automatically approved. Only an approved memo can be retrieved for a future
+  finalization, export, or send action.
+- AI mistake caught: early orchestration tests still constructed the
+  orchestrator with its previous dependencies after Memo Drafter and memo
+  persistence were added. The tests were updated with explicit mocks for the
+  new dependencies.
+- Documentation: recorded the approval-gate decision in ADR-0006.
