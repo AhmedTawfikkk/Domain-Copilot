@@ -60,6 +60,8 @@ public sealed class ClauseExtractorAgent : IClauseExtractorAgent
 
         try
         {
+            modelResponse = StripJsonCodeFence(modelResponse);
+
             using var json = JsonDocument.Parse(modelResponse);
 
             if (json.RootElement.ValueKind != JsonValueKind.Object ||
@@ -115,6 +117,42 @@ public sealed class ClauseExtractorAgent : IClauseExtractorAgent
             return Failed(
                 "The Clause Extractor returned malformed JSON.");
         }
+    }
+
+    private static string StripJsonCodeFence(string response)
+    {
+        var trimmed = response.Trim();
+
+        if (!trimmed.StartsWith("```", StringComparison.Ordinal))
+        {
+            return trimmed;
+        }
+
+        var firstLineEnd = trimmed.IndexOf('\n');
+
+        if (firstLineEnd < 0)
+        {
+            return trimmed;
+        }
+
+        var openingFence = trimmed[..firstLineEnd].Trim();
+
+        if (!string.Equals(openingFence, "```json", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(openingFence, "```", StringComparison.Ordinal))
+        {
+            return trimmed;
+        }
+
+        var closingFenceIndex = trimmed.LastIndexOf(
+            "```",
+            StringComparison.Ordinal);
+
+        if (closingFenceIndex <= firstLineEnd)
+        {
+            return trimmed;
+        }
+
+        return trimmed[(firstLineEnd + 1)..closingFenceIndex].Trim();
     }
 
     private static bool TryParseClause(

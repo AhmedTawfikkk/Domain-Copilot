@@ -67,6 +67,21 @@ public sealed class LegalContractPlaybookTests
 
         Assert.DoesNotContain(
             result.Findings,
+                       finding => finding.RuleId is "PB-CONF-001" or "PB-CONF-002");
+    }
+
+    [Fact]
+    public void Assess_WhenConfidentialityClauseUsesHoldInStrictConfidence_DoesNotReportItMissing()
+    {
+        var clause = CreateClause(
+            LegalClauseType.Confidentiality,
+            "Each party agrees to hold in strict confidence all Confidential Information " +
+            "of the other party. These obligations survive termination for three years.");
+
+        var result = Assess(clause);
+
+        Assert.DoesNotContain(
+            result.Findings,
             finding => finding.RuleId is "PB-CONF-001" or "PB-CONF-002");
     }
 

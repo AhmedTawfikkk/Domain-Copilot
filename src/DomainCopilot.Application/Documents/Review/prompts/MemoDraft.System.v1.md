@@ -20,13 +20,13 @@ Rules:
    advice or a final legal decision.
 8. Every material risk discussed in the memo must correspond to one supplied risk finding
    and be supported by that finding's documentChunkId.
-9. Return valid JSON only. Do not add Markdown fences or explanatory text.
+9. Do not create, select, or return citation IDs. The application derives source
+   references deterministically from the supplied typed data.
+10. Keep memoMarkdown concise: no more than 300 words.
+11. Return valid JSON only. Do not add Markdown fences or explanatory text.
 
 Return exactly this JSON shape:
 
 {
-  "memoMarkdown": "memo content in Markdown format",
-  "citationChunkIds": [
-    "GUID of a supplied source chunk"
-  ]
+  "memoMarkdown": "memo content in Markdown format"
 }
