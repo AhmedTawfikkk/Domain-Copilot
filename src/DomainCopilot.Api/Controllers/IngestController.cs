@@ -1,6 +1,7 @@
 ﻿using DomainCopilot.Application.Documents.Ingestion;
 using DomainCopilot.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace DomainCopilot.Api.Controllers;
 
@@ -9,6 +10,15 @@ namespace DomainCopilot.Api.Controllers;
 public class IngestController : ControllerBase
 {
     private const string DefaultSource = "UserUpload";
+    private const long MaximumUploadBytes = 20 * 1024 * 1024;
+
+    private static readonly HashSet<string> AllowedExtensions = new(
+        StringComparer.OrdinalIgnoreCase)
+    {
+        ".pdf",
+        ".docx",
+        ".txt"
+    };
 
     private readonly IDocumentIngestionService _ingestionService;
 
@@ -19,6 +29,8 @@ public class IngestController : ControllerBase
 
     [HttpPost]
     [Consumes("multipart/form-data")]
+    [RequestSizeLimit(MaximumUploadBytes)]
+    [EnableRateLimiting("expensive-operations")]
     public async Task<IActionResult> Ingest(
          IFormFile file,
         [FromForm] string? source,
@@ -27,7 +39,26 @@ public class IngestController : ControllerBase
         if (file.Length == 0)
             return BadRequest("File is empty.");
 
+        if (file.Length > MaximumUploadBytes)
+        {
+            return StatusCode(
+                StatusCodes.Status413PayloadTooLarge,
+                "File exceeds the 20 MB upload limit.");
+        }
+
+        var extension = Path.GetExtension(file.FileName);
+
+        if (!AllowedExtensions.Contains(extension))
+        {
+            return BadRequest("Only PDF, DOCX, and TXT files are supported.");
+        }
+
         var resolvedSource = string.IsNullOrWhiteSpace(source) ? DefaultSource : source;
+
+        if (resolvedSource.Length > 500)
+        {
+            return BadRequest("Source must not exceed 500 characters.");
+        }
 
         await using var stream = file.OpenReadStream();
         var command = new IngestDocumentCommand(file.FileName, resolvedSource, stream);

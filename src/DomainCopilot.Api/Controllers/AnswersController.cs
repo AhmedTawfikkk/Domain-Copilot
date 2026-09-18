@@ -1,5 +1,6 @@
 ﻿using DomainCopilot.Application.Documents.Answering;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace DomainCopilot.Api.Controllers;
 
@@ -16,6 +17,7 @@ public sealed class AnswersController : ControllerBase
     }
 
     [HttpPost]
+    [EnableRateLimiting("expensive-operations")]
     public async Task<ActionResult<GroundedAnswerResult>> Answer(
         [FromBody] AnswerRequest request,
         CancellationToken cancellationToken = default)
