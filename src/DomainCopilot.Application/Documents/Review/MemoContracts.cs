@@ -72,6 +72,9 @@ public interface IReviewMemoRepository
     Task<ReviewMemo?> GetByIdAsync(
         Guid memoId,
         CancellationToken cancellationToken = default);
+    Task<ReviewMemoExportSource?> GetExportSourceAsync(
+    Guid memoId,
+    CancellationToken cancellationToken = default);
 
     Task SaveChangesAsync(
         CancellationToken cancellationToken = default);

@@ -1,18 +1,23 @@
 ﻿using DomainCopilot.Application.Documents.Review;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace DomainCopilot.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableRateLimiting("state-changing")]
 public sealed class ReviewMemosController : ControllerBase
 {
     private readonly IMemoApprovalService _memoApprovalService;
+    private readonly IReviewMemoExportService _memoExportService;
 
     public ReviewMemosController(
-        IMemoApprovalService memoApprovalService)
+    IMemoApprovalService memoApprovalService,
+    IReviewMemoExportService memoExportService)
     {
         _memoApprovalService = memoApprovalService;
+        _memoExportService = memoExportService;
     }
 
     [HttpGet("{memoId:guid}")]
@@ -73,6 +78,44 @@ public sealed class ReviewMemosController : ControllerBase
                 memoId,
                 request,
                 cancellationToken));
+    }
+    [HttpGet("{memoId:guid}/export/docx")]
+    public async Task<IActionResult> ExportDocx(
+    Guid memoId,
+    CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var export = await _memoExportService.ExportApprovedDocxAsync(
+                memoId,
+                cancellationToken);
+
+            return File(
+                export.Content,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                export.FileName);
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new
+            {
+                error = exception.Message
+            });
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new
+            {
+                error = exception.Message
+            });
+        }
+        catch (InvalidOperationException exception)
+        {
+            return UnprocessableEntity(new
+            {
+                error = exception.Message
+            });
+        }
     }
 
     private async Task<ActionResult<ReviewMemoDetails>>

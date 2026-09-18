@@ -22,6 +22,12 @@ public sealed class ReviewMemo
 
     public string? DecisionComment { get; private set; }
 
+    public ICollection<ReviewMemoCitation> Citations { get; private set; } =
+        new List<ReviewMemoCitation>();
+
+    public ICollection<ReviewMemoRiskFinding> RiskFindings { get; private set; } =
+        new List<ReviewMemoRiskFinding>();
+
     private ReviewMemo()
     {
     }
@@ -29,6 +35,8 @@ public sealed class ReviewMemo
     public static ReviewMemo CreateDraft(
         Guid documentId,
         string content,
+        IReadOnlyList<Guid> citationChunkIds,
+        IReadOnlyList<ReviewMemoRiskFindingDraft> riskFindingDrafts,
         DateTime createdAtUtc)
     {
         ArgumentOutOfRangeException.ThrowIfEqual(
@@ -36,8 +44,22 @@ public sealed class ReviewMemo
             Guid.Empty);
 
         ArgumentException.ThrowIfNullOrWhiteSpace(content);
+        ArgumentNullException.ThrowIfNull(citationChunkIds);
+        ArgumentNullException.ThrowIfNull(riskFindingDrafts);
 
-        return new ReviewMemo
+        var distinctCitationChunkIds = citationChunkIds
+            .Where(chunkId => chunkId != Guid.Empty)
+            .Distinct()
+            .ToList();
+
+        if (distinctCitationChunkIds.Count == 0)
+        {
+            throw new ArgumentException(
+                "At least one source citation is required.",
+                nameof(citationChunkIds));
+        }
+
+        var memo = new ReviewMemo
         {
             Id = Guid.NewGuid(),
             DocumentId = documentId,
@@ -46,6 +68,26 @@ public sealed class ReviewMemo
             ApprovalStatus = MemoApprovalStatus.Draft,
             CreatedAtUtc = createdAtUtc
         };
+
+        foreach (var citationChunkId in distinctCitationChunkIds)
+        {
+            memo.Citations.Add(
+                ReviewMemoCitation.Create(
+                    memo.Id,
+                    citationChunkId,
+                    memo.Citations.Count));
+        }
+
+        foreach (var riskFindingDraft in riskFindingDrafts)
+        {
+            memo.RiskFindings.Add(
+                ReviewMemoRiskFinding.Create(
+                    memo.Id,
+                    riskFindingDraft,
+                    memo.RiskFindings.Count));
+        }
+
+        return memo;
     }
 
     public void Approve(
