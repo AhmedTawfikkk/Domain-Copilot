@@ -3,14 +3,28 @@ using DomainCopilot.Application.Documents.Ingestion;
 using DomainCopilot.Application.Documents.Retrieval;
 using DomainCopilot.Application.Documents.Review;
 using DomainCopilot.Application.Providers;
+using DomainCopilot.Api.Security;
+using DomainCopilot.Infrastructure.Exports;
 using DomainCopilot.Infrastructure.Ingestion;
 using DomainCopilot.Infrastructure.Persistence;
 using DomainCopilot.Infrastructure.Persistence.Repositories;
 using DomainCopilot.Infrastructure.Providers;
 using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
-Env.Load();
+var environmentFilePath = Path.GetFullPath(Path.Combine(
+    AppContext.BaseDirectory,
+    "..",
+    "..",
+    "..",
+    ".env"));
+
+if (File.Exists(environmentFilePath))
+{
+    Env.Load(environmentFilePath);
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +44,44 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 
+var apiSecurityOptions = new ApiSecurityOptions();
+
+builder.Configuration
+    .GetSection("ApiSecurity")
+    .Bind(apiSecurityOptions);
+
+apiSecurityOptions.Validate();
+builder.Services.AddSingleton(apiSecurityOptions);
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddFixedWindowLimiter("expensive-operations", limiter =>
+    {
+        limiter.PermitLimit = 10;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+        limiter.AutoReplenishment = true;
+    });
+
+    options.AddFixedWindowLimiter("state-changing", limiter =>
+    {
+        limiter.PermitLimit = 20;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+        limiter.AutoReplenishment = true;
+    });
+
+    options.AddFixedWindowLimiter("retrieval", limiter =>
+    {
+        limiter.PermitLimit = 60;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+        limiter.AutoReplenishment = true;
+    });
+});
+
 // ============================================================
 // Services — Database
 // ============================================================
@@ -42,8 +94,17 @@ builder.Services.AddDbContext<DomainCopilotDbContext>(options =>
 // Services — LLM Providers (Day 4)
 // ============================================================
 
-builder.Services.AddHttpClient<OllamaProvider>();
-builder.Services.AddScoped<OllamaProvider>();
+builder.Services.AddHttpClient("ollama", client =>
+{
+    client.BaseAddress = new Uri("http://localhost:11434");
+    client.Timeout = Timeout.InfiniteTimeSpan;
+});
+
+builder.Services.AddScoped<OllamaProvider>(sp =>
+{
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    return new OllamaProvider(httpClientFactory.CreateClient("ollama"));
+});
 
 
 //groq
@@ -95,16 +156,46 @@ builder.Services.AddScoped<ILlmProvider>(sp =>
 });
 
 // ============================================================
-// Services — Ingestion Pipeline (Day 5)
+// Services — Ingestion Pipeline (Day 5 + Day 10 OCR)
 // ============================================================
+
+var ingestionPolicy = new DocumentIngestionPolicy();
+
+builder.Configuration
+    .GetSection("DocumentIngestion")
+    .Bind(ingestionPolicy);
+
+ingestionPolicy.Validate();
+
+var pdfOcrOptions = new PdfOcrOptions();
+
+builder.Configuration
+    .GetSection("PdfOcr")
+    .Bind(pdfOcrOptions);
+
+pdfOcrOptions.Validate();
+
+builder.Services.AddSingleton(ingestionPolicy);
+builder.Services.AddSingleton(pdfOcrOptions);
+
+builder.Services.AddSingleton<IPdfOcrService,
+    TesseractPdfOcrService>();
 
 builder.Services.AddScoped<ITextExtractor, PdfTextExtractor>();
 builder.Services.AddScoped<ITextExtractor, DocxTextExtractor>();
 builder.Services.AddScoped<ITextExtractor, PlainTextExtractor>();
-builder.Services.AddScoped<IDocumentTextExtractor, CompositeTextExtractor>();
-builder.Services.AddScoped<ITextCleaner, LegalTextCleaner>();
-builder.Services.AddScoped<IClauseChunker, ClauseAwareChunker>();
-builder.Services.AddScoped<IDocumentIngestionService, DocumentIngestionService>();
+
+builder.Services.AddScoped<IDocumentTextExtractor,
+    CompositeTextExtractor>();
+
+builder.Services.AddScoped<ITextCleaner,
+    LegalTextCleaner>();
+
+builder.Services.AddScoped<IClauseChunker,
+    ClauseAwareChunker>();
+
+builder.Services.AddScoped<IDocumentIngestionService,
+    DocumentIngestionService>();
 
 
 // ============================================================
@@ -177,6 +268,12 @@ builder.Services.AddScoped<IReviewMemoRepository,
 builder.Services.AddScoped<IMemoApprovalService,
     MemoApprovalService>();
 
+builder.Services.AddSingleton<IReviewMemoDocxRenderer,
+    OpenXmlReviewMemoDocxRenderer>();
+
+builder.Services.AddScoped<IReviewMemoExportService,
+    ReviewMemoExportService>();
+
 // ============================================================
 // App pipeline
 // ============================================================
@@ -190,6 +287,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<ApiKeyAuthenticationMiddleware>();
+app.UseRateLimiter();
 app.MapControllers();
 
 

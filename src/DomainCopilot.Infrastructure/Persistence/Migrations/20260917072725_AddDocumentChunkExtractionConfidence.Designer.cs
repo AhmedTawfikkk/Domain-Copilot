@@ -3,6 +3,7 @@ using System;
 using DomainCopilot.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using Pgvector;
 namespace DomainCopilot.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(DomainCopilotDbContext))]
-    partial class DomainCopilotDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260917072725_AddDocumentChunkExtractionConfidence")]
+    partial class AddDocumentChunkExtractionConfidence
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -175,78 +178,6 @@ namespace DomainCopilot.Infrastructure.Persistence.Migrations
                     b.ToTable("ReviewMemos", (string)null);
                 });
 
-            modelBuilder.Entity("DomainCopilot.Domain.Entites.ReviewMemoCitation", b =>
-                {
-                    b.Property<Guid>("ReviewMemoId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("DocumentChunkId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("CitationOrder")
-                        .HasColumnType("integer");
-
-                    b.HasKey("ReviewMemoId", "DocumentChunkId");
-
-                    b.HasIndex("DocumentChunkId");
-
-                    b.HasIndex("ReviewMemoId", "CitationOrder")
-                        .IsUnique();
-
-                    b.ToTable("ReviewMemoCitations", (string)null);
-                });
-
-            modelBuilder.Entity("DomainCopilot.Domain.Entites.ReviewMemoRiskFinding", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ClauseType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid?>("DocumentChunkId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Rationale")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Recommendation")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("ReviewMemoId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("RuleId")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("Severity")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("character varying(300)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ReviewMemoId", "DisplayOrder")
-                        .IsUnique();
-
-                    b.ToTable("ReviewMemoRiskFindings", (string)null);
-                });
-
             modelBuilder.Entity("DomainCopilot.Infrastructure.Persistence.Entites.DocumentChunkEmbedding", b =>
                 {
                     b.Property<Guid>("DocumentChunkId")
@@ -295,36 +226,6 @@ namespace DomainCopilot.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("DomainCopilot.Domain.Entites.ReviewMemoCitation", b =>
-                {
-                    b.HasOne("DomainCopilot.Domain.Entites.DocumentChunk", "DocumentChunk")
-                        .WithMany()
-                        .HasForeignKey("DocumentChunkId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("DomainCopilot.Domain.Entites.ReviewMemo", "ReviewMemo")
-                        .WithMany("Citations")
-                        .HasForeignKey("ReviewMemoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("DocumentChunk");
-
-                    b.Navigation("ReviewMemo");
-                });
-
-            modelBuilder.Entity("DomainCopilot.Domain.Entites.ReviewMemoRiskFinding", b =>
-                {
-                    b.HasOne("DomainCopilot.Domain.Entites.ReviewMemo", "ReviewMemo")
-                        .WithMany("RiskFindings")
-                        .HasForeignKey("ReviewMemoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ReviewMemo");
-                });
-
             modelBuilder.Entity("DomainCopilot.Infrastructure.Persistence.Entites.DocumentChunkEmbedding", b =>
                 {
                     b.HasOne("DomainCopilot.Domain.Entites.DocumentChunk", null)
@@ -337,13 +238,6 @@ namespace DomainCopilot.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("DomainCopilot.Domain.Entites.Document", b =>
                 {
                     b.Navigation("Chunks");
-                });
-
-            modelBuilder.Entity("DomainCopilot.Domain.Entites.ReviewMemo", b =>
-                {
-                    b.Navigation("Citations");
-
-                    b.Navigation("RiskFindings");
                 });
 #pragma warning restore 612, 618
         }

@@ -18,6 +18,14 @@ public class DocumentChunkConfiguration : IEntityTypeConfiguration<DocumentChunk
         builder.Property(chunk => chunk.ChunkIndex)
             .IsRequired();
 
+        builder.Property(chunk => chunk.ExtractionConfidence)
+    .HasDefaultValue(1.0)
+    .IsRequired();
+
+        builder.ToTable(table => table.HasCheckConstraint(
+            "CK_DocumentChunks_ExtractionConfidence",
+            "\"ExtractionConfidence\" >= 0.0 AND \"ExtractionConfidence\" <= 1.0"));
+
         builder.Property(chunk => chunk.ClauseOrSection)
             .HasMaxLength(200);
 

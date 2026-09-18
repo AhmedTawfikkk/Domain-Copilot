@@ -15,18 +15,21 @@ public sealed class DocumentIngestionService : IDocumentIngestionService
     private readonly ITextCleaner _textCleaner;
     private readonly IClauseChunker _clauseChunker;
     private readonly ILogger<DocumentIngestionService> _logger;
+    private readonly DocumentIngestionPolicy _ingestionPolicy;
 
     public DocumentIngestionService(
-        DomainCopilotDbContext dbContext,
-        IDocumentTextExtractor textExtractor,
-        ITextCleaner textCleaner,
-        IClauseChunker clauseChunker,
-        ILogger<DocumentIngestionService> logger)
+      DomainCopilotDbContext dbContext,
+      IDocumentTextExtractor textExtractor,
+      ITextCleaner textCleaner,
+      IClauseChunker clauseChunker,
+      DocumentIngestionPolicy ingestionPolicy,
+      ILogger<DocumentIngestionService> logger)
     {
         _dbContext = dbContext;
         _textExtractor = textExtractor;
         _textCleaner = textCleaner;
         _clauseChunker = clauseChunker;
+        _ingestionPolicy = ingestionPolicy;
         _logger = logger;
     }
 
@@ -97,7 +100,7 @@ public sealed class DocumentIngestionService : IDocumentIngestionService
             if (cleanedPages.Count == 0)
             {
                 throw new InvalidOperationException(
-                    "No extractable text was found. The document needs OCR, which will be added later.");
+                    "No readable text was extracted from the document.");
             }
 
             var chunks = _clauseChunker.Chunk(cleanedPages);
@@ -109,6 +112,11 @@ public sealed class DocumentIngestionService : IDocumentIngestionService
 
             foreach (var chunk in chunks)
             {
+                var extractionConfidence = Math.Clamp(
+                    chunk.ExtractionConfidence,
+                    0.0,
+                    1.0);
+
                 document.Chunks.Add(new DocumentChunk
                 {
                     Id = Guid.NewGuid(),
@@ -117,7 +125,9 @@ public sealed class DocumentIngestionService : IDocumentIngestionService
                     ClauseOrSection = chunk.ClauseOrSection,
                     PageNumber = chunk.PageNumber,
                     ChunkIndex = chunk.ChunkIndex,
-                    LowConfidence = false,
+                    ExtractionConfidence = extractionConfidence,
+                    LowConfidence = extractionConfidence <
+                                    _ingestionPolicy.LowConfidenceThreshold,
                     ExtraMetadata = chunk.Metadata
                 });
             }
