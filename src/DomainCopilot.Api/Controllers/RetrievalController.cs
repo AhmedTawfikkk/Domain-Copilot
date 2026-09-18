@@ -1,6 +1,7 @@
 ﻿using DomainCopilot.Application.Documents.Retrieval;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace DomainCopilot.Api.Controllers
 {
@@ -17,6 +18,7 @@ namespace DomainCopilot.Api.Controllers
         }
 
         [HttpGet]
+        [EnableRateLimiting("retrieval")]
         public async Task<ActionResult<IReadOnlyList<RetrievedChunk>>> Search(
             [FromQuery] string query,
             [FromQuery] RetreivalMode mode = RetreivalMode.Hybrid,

@@ -15,7 +15,8 @@ namespace DomainCopilot.Domain.Entites
         public string? ClauseOrSection { get; set; }
         public int? PageNumber { get; set; }
         public int ChunkIndex { get; set; } 
-        public bool LowConfidence { get; set; } = false; 
+        public bool LowConfidence { get; set; } = false;
+        public double ExtractionConfidence { get; set; } = 1.0;
         public Dictionary<string, string>? ExtraMetadata { get; set; } 
     }
 }

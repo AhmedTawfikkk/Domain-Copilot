@@ -26,7 +26,13 @@ public class OllamaProvider : ILlmProvider
                 new { role = "system", content = systemPrompt },
                 new { role = "user", content = userPrompt }
             },
-            stream = false
+            stream = false,
+            format = "json",
+            options = new
+            {
+                temperature = 0,
+                num_predict = 512
+            }
         };
 
         var response = await _httpClient.PostAsJsonAsync("/api/chat", request, ct);

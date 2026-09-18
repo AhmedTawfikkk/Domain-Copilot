@@ -38,7 +38,7 @@ public class GeminiProvider : ILlmProvider
 
         var response = await _httpClient.PostAsJsonAsync(
             $"models/{CompletionModel}:generateContent", request, ct);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessAsync(response, ct);
 
         var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
 
@@ -74,7 +74,7 @@ public class GeminiProvider : ILlmProvider
 
         using var response = await _httpClient.SendAsync(
             httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessAsync(response, ct);
 
         using var stream = await response.Content.ReadAsStreamAsync(ct);
         using var reader = new StreamReader(stream);
@@ -127,7 +127,7 @@ public class GeminiProvider : ILlmProvider
 
         var response = await _httpClient.PostAsJsonAsync(
             $"models/{EmbeddingModel}:embedContent", request, ct);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessAsync(response, ct);
 
         var json = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
 
@@ -154,5 +154,27 @@ public class GeminiProvider : ILlmProvider
         if (magnitude == 0f) return vector;
 
         return vector.Select(v => v / magnitude).ToArray();
+    }
+
+    private static async Task EnsureSuccessAsync(
+    HttpResponseMessage response,
+    CancellationToken cancellationToken)
+    {
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        var errorBody = await response.Content.ReadAsStringAsync(
+            cancellationToken);
+
+        if (errorBody.Length > 1_000)
+        {
+            errorBody = errorBody[..1_000];
+        }
+
+        throw new HttpRequestException(
+            $"Gemini request failed with {(int)response.StatusCode} " +
+            $"({response.ReasonPhrase}). Response: {errorBody}");
     }
 }

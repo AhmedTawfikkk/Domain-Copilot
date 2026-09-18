@@ -16,6 +16,11 @@ public class DomainCopilotDbContext : DbContext
     public DbSet<DocumentChunkEmbedding> DocumentChunkEmbeddings =>
     Set<DocumentChunkEmbedding>();
     public DbSet<ReviewMemo> ReviewMemos => Set<ReviewMemo>();
+    public DbSet<ReviewMemoCitation> ReviewMemoCitations =>
+    Set<ReviewMemoCitation>();
+
+    public DbSet<ReviewMemoRiskFinding> ReviewMemoRiskFindings =>
+        Set<ReviewMemoRiskFinding>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

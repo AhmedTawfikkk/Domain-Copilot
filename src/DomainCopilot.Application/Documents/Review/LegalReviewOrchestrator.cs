@@ -221,14 +221,29 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
                 "The Memo Drafter returned an invalid result.");
         }
 
-        var memoContent = AppendVerifiedSources(
-            memoDraftResult.Content,
-            memoDraftResult.CitationChunkIds,
-            extractedClauses);
+        var riskFindingDrafts = riskAssessmentResult.Findings
+      .Select(finding => new ReviewMemoRiskFindingDraft(
+          finding.RuleId,
+          finding.ClauseType.ToString(),
+          finding.Severity.ToString(),
+          finding.Title,
+          finding.Rationale,
+          finding.Recommendation,
+          finding.DocumentChunkId))
+      .ToList();
+
+        var citationChunkIds = memoDraftResult.CitationChunkIds
+            .Concat(riskAssessmentResult.Findings
+                .Where(finding => finding.DocumentChunkId.HasValue)
+                .Select(finding => finding.DocumentChunkId!.Value))
+            .Distinct()
+            .ToList();
 
         var reviewMemo = ReviewMemo.CreateDraft(
             document.DocumentId,
-            memoContent,
+            memoDraftResult.Content,
+            citationChunkIds,
+            riskFindingDrafts,
             DateTime.UtcNow);
 
         try
@@ -341,34 +356,7 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
                exception is TaskCanceledException;
     }
 
-    private static string AppendVerifiedSources(
-        string memoContent,
-        IReadOnlyList<Guid> citationChunkIds,
-        IReadOnlyList<ExtractedClause> extractedClauses)
-    {
-        var clausesByChunkId = extractedClauses.ToDictionary(
-            clause => clause.DocumentChunkId);
-
-        var references = new List<string>();
-
-        foreach (var chunkId in citationChunkIds.Distinct())
-        {
-            if (!clausesByChunkId.TryGetValue(
-                    chunkId,
-                    out var clause))
-            {
-                continue;
-            }
-
-            references.Add(
-                $"- Chunk `{chunkId}` | " +
-                $"Section: {clause.ClauseOrSection ?? "unknown"} | " +
-                $"Page: {clause.PageNumber?.ToString() ?? "unknown"}");
-        }
-
-        return $"{memoContent.Trim()}{Environment.NewLine}{Environment.NewLine}" +
-               $"## Verified Source References{Environment.NewLine}{string.Join(Environment.NewLine, references)}";
-    }
+   
 
     private static LegalReviewResult Terminate(
         Guid documentId,

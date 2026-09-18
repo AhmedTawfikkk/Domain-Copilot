@@ -75,4 +75,49 @@ public class ClauseAwareChunkerTests
 
         Assert.Equal(new[] { 0, 1, 2 }, chunks.Select(c => c.ChunkIndex));
     }
+    [Fact]
+    public void Chunk_WhenPageHasExtractionConfidence_PreservesItOnEveryChunk()
+    {
+        var pages = new List<ExtractedPage>
+    {
+        new(
+            1,
+            "1. Confidentiality\nThe receiving party shall keep confidential information confidential.\n\n" +
+            "2. Termination\nEither party may terminate with thirty days written notice.",
+            0.72)
+    };
+
+        var chunks = _sut.Chunk(pages);
+
+        Assert.Equal(2, chunks.Count);
+
+        Assert.All(
+            chunks,
+            chunk => Assert.Equal(0.72, chunk.ExtractionConfidence, 2));
+
+        Assert.All(
+            chunks,
+            chunk => Assert.Equal(
+                "0.72",
+                chunk.Metadata["extraction_confidence"]));
+    }
+    [Fact]
+    public void Chunk_WhenSectionBodyStartsOnNextLine_DoesNotIncludeBodyInHeading()
+    {
+        var pages = new List<ExtractedPage>
+    {
+        new(
+            1,
+            "SECTION 2 PAYMENT\n" +
+            "Aurora Peak Technologies Inc shall pay all undisputed invoices.")
+    };
+
+        var chunks = _sut.Chunk(pages);
+
+        var chunk = Assert.Single(chunks);
+
+        Assert.Equal(
+            "SECTION 2 PAYMENT",
+            chunk.ClauseOrSection);
+    }
 }

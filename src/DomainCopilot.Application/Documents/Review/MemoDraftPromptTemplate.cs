@@ -11,8 +11,6 @@ public sealed class MemoDraftPromptTemplate : IMemoDraftPromptTemplate
     private const string UserPromptResourceName =
         "DomainCopilot.Application.Documents.Review.prompts.MemoDraft.User.v1.md";
 
-    private const int MaximumEvidenceCharacters = 1_500;
-
     private readonly string _systemPromptTemplate;
     private readonly string _userPromptTemplate;
 
@@ -88,8 +86,6 @@ public sealed class MemoDraftPromptTemplate : IMemoDraftPromptTemplate
                 $"confidence=\"{clause.Confidence:F2}\">");
 
             builder.AppendLine($"Summary: {clause.Summary}");
-            builder.AppendLine(
-                $"Evidence: {Truncate(clause.EvidenceText)}");
 
             builder.AppendLine("</extracted-clause>");
             builder.AppendLine();
@@ -125,13 +121,6 @@ public sealed class MemoDraftPromptTemplate : IMemoDraftPromptTemplate
         }
 
         return builder.ToString().Trim();
-    }
-
-    private static string Truncate(string value)
-    {
-        return value.Length <= MaximumEvidenceCharacters
-            ? value
-            : value[..MaximumEvidenceCharacters];
     }
 
     private static string ReadEmbeddedResource(

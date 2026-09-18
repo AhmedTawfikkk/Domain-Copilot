@@ -1,5 +1,6 @@
 ﻿using DomainCopilot.Application.Documents.Review;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace DomainCopilot.Api.Controllers;
 
@@ -16,6 +17,7 @@ public sealed class LegalReviewsController : ControllerBase
     }
 
     [HttpPost]
+    [EnableRateLimiting("expensive-operations")]
     public async Task<ActionResult<LegalReviewResult>> Review(
         [FromBody] LegalReviewRequest request,
         CancellationToken cancellationToken = default)

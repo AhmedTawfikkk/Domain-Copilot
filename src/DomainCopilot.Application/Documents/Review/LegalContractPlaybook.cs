@@ -356,6 +356,7 @@ public sealed class LegalContractPlaybook : IContractReviewPlaybook
         return ContainsAny(
             clause.EvidenceText,
             "shall keep confidential",
+            "hold in strict confidence",
             "shall maintain confidentiality",
             "shall not disclose",
             "duty of confidentiality",

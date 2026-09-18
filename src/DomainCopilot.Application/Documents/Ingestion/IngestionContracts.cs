@@ -1,16 +1,11 @@
 ﻿using DomainCopilot.Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DomainCopilot.Application.Documents.Ingestion
 {
     public sealed record IngestDocumentCommand(
-     string FileName,
-     string Source,
-     Stream Content);
+        string FileName,
+        string Source,
+        Stream Content);
 
     public sealed record DocumentIngestionResult(
         Guid DocumentId,
@@ -21,14 +16,30 @@ namespace DomainCopilot.Application.Documents.Ingestion
 
     public sealed record ExtractedPage(
         int PageNumber,
-        string Text);
+        string Text,
+        double ExtractionConfidence = 1.0);
 
     public sealed record ChunkDraft(
         string Content,
         string? ClauseOrSection,
         int PageNumber,
         int ChunkIndex,
-        Dictionary<string, string> Metadata);
+        Dictionary<string, string> Metadata,
+        double ExtractionConfidence);
+
+    public sealed class DocumentIngestionPolicy
+    {
+        public double LowConfidenceThreshold { get; init; } = 0.85;
+
+        public void Validate()
+        {
+            if (LowConfidenceThreshold is < 0.0 or > 1.0)
+            {
+                throw new InvalidOperationException(
+                    "LowConfidenceThreshold must be between 0.0 and 1.0.");
+            }
+        }
+    }
 
     public interface ITextExtractor
     {
@@ -49,10 +60,19 @@ namespace DomainCopilot.Application.Documents.Ingestion
         IReadOnlyList<ChunkDraft> Chunk(
             IReadOnlyList<ExtractedPage> pages);
     }
+
     public interface IDocumentTextExtractor
     {
         Task<IReadOnlyList<ExtractedPage>> ExtractAsync(
-            string fileName, Stream content, CancellationToken cancellationToken = default);
+            string fileName,
+            Stream content,
+            CancellationToken cancellationToken = default);
+    }
+    public interface IPdfOcrService
+    {
+        Task<IReadOnlyList<ExtractedPage>> ExtractAsync(
+            Stream pdfContent,
+            CancellationToken cancellationToken = default);
     }
 
     public interface IDocumentIngestionService

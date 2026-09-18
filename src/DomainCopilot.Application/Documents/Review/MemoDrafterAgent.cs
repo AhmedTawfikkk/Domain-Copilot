@@ -38,12 +38,12 @@ public sealed class MemoDrafterAgent : IMemoDrafterAgent
 
         return ParseAndValidateResponse(
             modelResponse,
-            request.ExtractedClauses);
+            request);
     }
 
     private static MemoDraftResult ParseAndValidateResponse(
         string modelResponse,
-        IReadOnlyList<ExtractedClause> extractedClauses)
+        MemoDraftRequest request)
     {
         if (string.IsNullOrWhiteSpace(modelResponse))
         {
@@ -52,6 +52,8 @@ public sealed class MemoDrafterAgent : IMemoDrafterAgent
 
         try
         {
+            modelResponse = StripJsonCodeFence(modelResponse);
+
             using var json = JsonDocument.Parse(modelResponse);
 
             var root = json.RootElement;
@@ -77,46 +79,12 @@ public sealed class MemoDrafterAgent : IMemoDrafterAgent
                     $"The Memo Drafter exceeded the {MaximumMemoCharacters} character limit.");
             }
 
-            if (!root.TryGetProperty(
-                    "citationChunkIds",
-                    out var citationsElement) ||
-                citationsElement.ValueKind != JsonValueKind.Array)
-            {
-                return Failed(
-                    "The Memo Drafter omitted the required 'citationChunkIds' array.");
-            }
-
-            var allowedChunkIds = extractedClauses
-                .Select(clause => clause.DocumentChunkId)
-                .ToHashSet();
-
-            var citationChunkIds = new List<Guid>();
-
-            foreach (var citationElement in citationsElement.EnumerateArray())
-            {
-                if (citationElement.ValueKind != JsonValueKind.String ||
-                    !Guid.TryParse(citationElement.GetString(), out var chunkId))
-                {
-                    return Failed(
-                        "The Memo Drafter returned an invalid citation chunk ID.");
-                }
-
-                if (!allowedChunkIds.Contains(chunkId))
-                {
-                    return Failed(
-                        "The Memo Drafter referenced a source chunk that was not supplied.");
-                }
-
-                if (!citationChunkIds.Contains(chunkId))
-                {
-                    citationChunkIds.Add(chunkId);
-                }
-            }
+            var citationChunkIds = BuildDeterministicCitationIds(request);
 
             if (citationChunkIds.Count == 0)
             {
                 return Failed(
-                    "The Memo Drafter returned a memo without source citations.");
+                    "The memo cannot be grounded because no source chunks were supplied.");
             }
 
             return new MemoDraftResult(
@@ -130,6 +98,59 @@ public sealed class MemoDrafterAgent : IMemoDrafterAgent
             return Failed(
                 "The Memo Drafter returned malformed JSON.");
         }
+    }
+
+    private static IReadOnlyList<Guid> BuildDeterministicCitationIds(
+        MemoDraftRequest request)
+    {
+        var riskSourceChunkIds = request.RiskFindings
+            .Where(finding => finding.DocumentChunkId.HasValue)
+            .Select(finding => finding.DocumentChunkId!.Value)
+            .Distinct()
+            .ToList();
+
+        return riskSourceChunkIds.Count > 0
+            ? riskSourceChunkIds
+            : request.ExtractedClauses
+                .Select(clause => clause.DocumentChunkId)
+                .Distinct()
+                .ToList();
+    }
+
+    private static string StripJsonCodeFence(string response)
+    {
+        var trimmed = response.Trim();
+
+        if (!trimmed.StartsWith("```", StringComparison.Ordinal))
+        {
+            return trimmed;
+        }
+
+        var firstLineEnd = trimmed.IndexOf('\n');
+
+        if (firstLineEnd < 0)
+        {
+            return trimmed;
+        }
+
+        var openingFence = trimmed[..firstLineEnd].Trim();
+
+        if (!string.Equals(openingFence, "```json", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(openingFence, "```", StringComparison.Ordinal))
+        {
+            return trimmed;
+        }
+
+        var closingFenceIndex = trimmed.LastIndexOf(
+            "```",
+            StringComparison.Ordinal);
+
+        if (closingFenceIndex <= firstLineEnd)
+        {
+            return trimmed;
+        }
+
+        return trimmed[(firstLineEnd + 1)..closingFenceIndex].Trim();
     }
 
     private static bool TryGetRequiredString(

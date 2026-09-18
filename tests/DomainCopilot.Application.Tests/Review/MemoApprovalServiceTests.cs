@@ -116,6 +116,8 @@ public sealed class MemoApprovalServiceTests
         return ReviewMemo.CreateDraft(
             Guid.NewGuid(),
             "Initial draft memo.",
+            new[] { Guid.NewGuid() },
+            Array.Empty<ReviewMemoRiskFindingDraft>(),
             DateTime.UtcNow);
     }
 

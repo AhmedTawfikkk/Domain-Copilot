@@ -26,10 +26,25 @@ namespace DomainCopilot.Infrastructure.Providers
             {
                 return await _primary.CompleteAsync(systemPrompt, userPrompt, ct);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Primary LLM provider failed, falling back to secondary provider.");
-                return await _fallback.CompleteAsync(systemPrompt, userPrompt, ct);
+
+                try
+                {
+                    return await _fallback.CompleteAsync(systemPrompt, userPrompt, ct);
+                }
+                catch (Exception fallbackException)
+                {
+                    _logger.LogError(
+                        fallbackException,
+                        "Fallback LLM provider also failed after the primary provider failed.");
+                    throw;
+                }
             }
         }
 

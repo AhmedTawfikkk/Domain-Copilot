@@ -94,7 +94,8 @@ The application refuses an answer when:
 ### Memo Drafter
 
 - Input: typed extracted clauses and typed `RiskFinding` records.
-- Output: a draft memo with cited source chunk IDs.
+- Output: a draft memo. Source chunk IDs are derived deterministically by the
+  Application layer from typed risk findings and extracted clauses.
 - Allowed tool: `ILlmProvider`.
 - Treats Risk Assessor findings as the complete risk list; it must not invent
   additional findings or recommendations.
@@ -152,6 +153,21 @@ output.
 - Orchestrator tests verify successful sequencing and termination conditions.
 - Manual API testing is performed against the local PostgreSQL database and
   ingested contract corpus.
+- OCR tests cover direct-text and scanned-page fallback behavior. Export tests
+  verify that a draft cannot be exported before counsel approval.
+- An indirect prompt-injection regression test verifies that an instruction in
+  retrieved document text remains inside an untrusted evidence boundary.
+
+## Security Controls
+
+- Expensive API operations (ingest, answer generation, legal review, and
+  embedding indexing) use a 10-request-per-minute fixed-window limiter.
+- Uploaded documents are restricted to PDF, DOCX, or TXT and limited to 20 MB.
+- Memo export is fail-closed: it requires `Approved` status plus persisted
+  citations and risk findings.
+- `docs/SECURITY.md` records the implemented controls, threat model, and
+  limitations. API-key authentication is implemented; Lawyer/Counsel role
+  authorization is deliberately tracked for Day 11.
 
 `docs/EVALUATION.md` contains candidate evaluation cases. A case is marked as
 passed only after the output and cited source chunks are manually reviewed.

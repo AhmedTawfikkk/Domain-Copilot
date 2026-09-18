@@ -1,6 +1,7 @@
 ﻿using DomainCopilot.Application.Documents.Retrieval;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace DomainCopilot.Api.Controllers
 {
@@ -17,6 +18,7 @@ namespace DomainCopilot.Api.Controllers
         }
 
         [HttpPost("index")]
+        [EnableRateLimiting("expensive-operations")]
         public async Task<IActionResult> IndexPendingChunks(
             [FromQuery] int batchSize = 32,
             CancellationToken cancellationToken = default)
