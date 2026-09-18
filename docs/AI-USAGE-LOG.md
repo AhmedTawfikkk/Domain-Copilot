@@ -132,3 +132,26 @@ by the developer.
   persistence were added. The tests were updated with explicit mocks for the
   new dependencies.
 - Documentation: recorded the approval-gate decision in ADR-0006.
+
+## Day 10 - OCR, Export, and Basic API Security
+
+- Developer implementation and verification: added a Tesseract/Poppler OCR
+  fallback for scanned PDFs, persisted extraction-confidence values per chunk,
+  and verified OCR-generated chunks against PostgreSQL.
+- Developer implementation and verification: added counsel-gated DOCX export
+  with persisted memo citations, persisted risk findings, a risk table, and a
+  source-reference table. Manual API testing confirmed export is rejected
+  before approval and enabled after approval.
+- Independent decision: memo citations are derived deterministically from typed
+  risk findings and extracted clauses rather than trusting model-generated GUID
+  lists. This preserves grounding when a local model produces an invalid ID.
+- AI mistake caught: the default `HttpClient` timeout of 100 seconds was
+  shorter than the configured 120-second Memo Drafter timeout, causing a
+  misleading provider timeout. The Ollama client now leaves cancellation to the
+  orchestrator policy.
+- AI mistake caught: the first Memo Drafter prompt repeated raw evidence after
+  clause extraction, making local inference unnecessarily slow. The prompt now
+  uses typed summaries and typed risk findings only, with a bounded output.
+- AI-assisted: added fixed-window rate limits, upload size/type validation,
+  API-key authentication, an indirect prompt-injection regression test, and
+  `docs/SECURITY.md` to describe the actual controls and remaining limits.
