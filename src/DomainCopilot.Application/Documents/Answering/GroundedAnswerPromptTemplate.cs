@@ -7,7 +7,7 @@ namespace DomainCopilot.Application.Documents.Answering;
 public sealed class GroundedAnswerPromptTemplate : IGroundedAnswerPromptTemplate
 {
     private const string SystemPromptResourceName =
-        "DomainCopilot.Application.Documents.Answering.Prompts.GroundedAnswer.System.v1.md";
+        "DomainCopilot.Application.Documents.Answering.Prompts.GroundedAnswer.System.v2.md";
 
     private const string UserPromptResourceName =
         "DomainCopilot.Application.Documents.Answering.Prompts.GroundedAnswer.User.v1.md";
@@ -30,7 +30,7 @@ public sealed class GroundedAnswerPromptTemplate : IGroundedAnswerPromptTemplate
             UserPromptResourceName);
     }
 
-    public string Version => "GroundedAnswer.System.v1 + GroundedAnswer.User.v1";
+    public string Version => "GroundedAnswer.System.v2 + GroundedAnswer.User.v1";
 
     public GroundedAnswerPrompts Render(
         string question,

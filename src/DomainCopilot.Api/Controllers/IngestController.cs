@@ -1,5 +1,7 @@
-﻿using DomainCopilot.Application.Documents.Ingestion;
+﻿using DomainCopilot.Api.Security;
+using DomainCopilot.Application.Documents.Ingestion;
 using DomainCopilot.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -7,6 +9,7 @@ namespace DomainCopilot.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Policy = ApiAuthorizationPolicies.Lawyer)]
 public class IngestController : ControllerBase
 {
     private const string DefaultSource = "UserUpload";

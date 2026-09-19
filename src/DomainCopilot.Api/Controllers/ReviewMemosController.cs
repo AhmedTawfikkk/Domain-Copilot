@@ -1,4 +1,6 @@
-﻿using DomainCopilot.Application.Documents.Review;
+﻿using DomainCopilot.Api.Security;
+using DomainCopilot.Application.Documents.Review;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -7,6 +9,7 @@ namespace DomainCopilot.Api.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [EnableRateLimiting("state-changing")]
+[Authorize(Policy = ApiAuthorizationPolicies.LawyerOrCounsel)]
 public sealed class ReviewMemosController : ControllerBase
 {
     private readonly IMemoApprovalService _memoApprovalService;
@@ -42,6 +45,7 @@ public sealed class ReviewMemosController : ControllerBase
     }
 
     [HttpPost("{memoId:guid}/approve")]
+    [Authorize(Policy = ApiAuthorizationPolicies.Counsel)]
     public Task<ActionResult<ReviewMemoDetails>> Approve(
         Guid memoId,
         [FromBody] ApproveMemoRequest request,
@@ -55,6 +59,7 @@ public sealed class ReviewMemosController : ControllerBase
     }
 
     [HttpPost("{memoId:guid}/reject")]
+    [Authorize(Policy = ApiAuthorizationPolicies.Counsel)]
     public Task<ActionResult<ReviewMemoDetails>> Reject(
         Guid memoId,
         [FromBody] RejectMemoRequest request,
@@ -68,6 +73,7 @@ public sealed class ReviewMemosController : ControllerBase
     }
 
     [HttpPost("{memoId:guid}/edit-and-approve")]
+    [Authorize(Policy = ApiAuthorizationPolicies.Counsel)]
     public Task<ActionResult<ReviewMemoDetails>> EditAndApprove(
         Guid memoId,
         [FromBody] EditAndApproveMemoRequest request,
@@ -80,6 +86,7 @@ public sealed class ReviewMemosController : ControllerBase
                 cancellationToken));
     }
     [HttpGet("{memoId:guid}/export/docx")]
+    [Authorize(Policy = ApiAuthorizationPolicies.Counsel)]
     public async Task<IActionResult> ExportDocx(
     Guid memoId,
     CancellationToken cancellationToken = default)

@@ -1,17 +1,20 @@
+using DomainCopilot.Api.Security;
 using DomainCopilot.Application.Documents.Answering;
+using DomainCopilot.Application.Documents.Evaluation;
 using DomainCopilot.Application.Documents.Ingestion;
 using DomainCopilot.Application.Documents.Retrieval;
 using DomainCopilot.Application.Documents.Review;
 using DomainCopilot.Application.Providers;
-using DomainCopilot.Api.Security;
 using DomainCopilot.Infrastructure.Exports;
 using DomainCopilot.Infrastructure.Ingestion;
 using DomainCopilot.Infrastructure.Persistence;
 using DomainCopilot.Infrastructure.Persistence.Repositories;
 using DomainCopilot.Infrastructure.Providers;
 using DotNetEnv;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi;
 using System.Threading.RateLimiting;
 
 var environmentFilePath = Path.GetFullPath(Path.Combine(
@@ -41,7 +44,27 @@ var connectionString = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION_S
 // ============================================================
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition(
+        "ApiKey",
+        new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.ApiKey,
+            Name = "X-Api-Key",
+            In = ParameterLocation.Header,
+            Description =
+                "Enter the Lawyer or Counsel API key."
+        });
+
+    options.AddSecurityRequirement(document =>
+        new OpenApiSecurityRequirement
+        {
+            [new OpenApiSecuritySchemeReference(
+                "ApiKey",
+                document)] = new List<string>()
+        });
+});
 builder.Services.AddControllers();
 
 var apiSecurityOptions = new ApiSecurityOptions();
@@ -52,6 +75,61 @@ builder.Configuration
 
 apiSecurityOptions.Validate();
 builder.Services.AddSingleton(apiSecurityOptions);
+
+builder.Services
+    .AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme =
+            ApiKeyAuthenticationHandler.SchemeName;
+
+        options.DefaultChallengeScheme =
+            ApiKeyAuthenticationHandler.SchemeName;
+    })
+    .AddScheme<AuthenticationSchemeOptions,
+        ApiKeyAuthenticationHandler>(
+        ApiKeyAuthenticationHandler.SchemeName,
+        _ => { });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(
+        ApiAuthorizationPolicies.Lawyer,
+        policy =>
+        {
+            policy.AddAuthenticationSchemes(
+                ApiKeyAuthenticationHandler.SchemeName);
+
+            policy.RequireAuthenticatedUser();
+
+            policy.RequireRole(ApiRoles.Lawyer);
+        });
+
+    options.AddPolicy(
+        ApiAuthorizationPolicies.LawyerOrCounsel,
+        policy =>
+        {
+            policy.AddAuthenticationSchemes(
+                ApiKeyAuthenticationHandler.SchemeName);
+
+            policy.RequireAuthenticatedUser();
+
+            policy.RequireRole(
+                ApiRoles.Lawyer,
+                ApiRoles.Counsel);
+        });
+
+    options.AddPolicy(
+        ApiAuthorizationPolicies.Counsel,
+        policy =>
+        {
+            policy.AddAuthenticationSchemes(
+                ApiKeyAuthenticationHandler.SchemeName);
+
+            policy.RequireAuthenticatedUser();
+
+            policy.RequireRole(ApiRoles.Counsel);
+        });
+});
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -275,6 +353,16 @@ builder.Services.AddScoped<IReviewMemoExportService,
     ReviewMemoExportService>();
 
 // ============================================================
+// Services — Evaluation Harness (Day 11)
+// ============================================================
+
+builder.Services.AddSingleton<IGoldenEvaluationCaseCatalog,
+    GoldenEvaluationCaseCatalog>();
+
+builder.Services.AddScoped<IEvaluationHarness,
+    EvaluationHarness>();
+
+// ============================================================
 // App pipeline
 // ============================================================
 
@@ -287,8 +375,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseMiddleware<ApiKeyAuthenticationMiddleware>();
+app.UseAuthentication();
 app.UseRateLimiter();
+app.UseAuthorization();
+
 app.MapControllers();
 
 
@@ -300,7 +390,8 @@ app.MapPost("/test/complete", async (ILlmProvider provider, TestCompleteRequest 
         CancellationToken.None);
     return Results.Ok(new { response = result, providerType = provider.GetType().Name });
 })
-.WithName("TestComplete");
+.WithName("TestComplete").RequireAuthorization(
+    ApiAuthorizationPolicies.LawyerOrCounsel); ;
 
 app.Run();
 
