@@ -1,4 +1,6 @@
-﻿using DomainCopilot.Application.Documents.Review;
+﻿using DomainCopilot.Api.Security;
+using DomainCopilot.Application.Documents.Review;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -6,6 +8,7 @@ namespace DomainCopilot.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Policy = ApiAuthorizationPolicies.Lawyer)]
 public sealed class LegalReviewsController : ControllerBase
 {
     private readonly ILegalReviewOrchestrator _orchestrator;

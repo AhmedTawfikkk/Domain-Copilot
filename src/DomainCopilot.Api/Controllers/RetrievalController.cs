@@ -1,4 +1,6 @@
-﻿using DomainCopilot.Application.Documents.Retrieval;
+﻿using DomainCopilot.Api.Security;
+using DomainCopilot.Application.Documents.Retrieval;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -7,6 +9,7 @@ namespace DomainCopilot.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Policy = ApiAuthorizationPolicies.Lawyer)]
     public sealed class RetrievalController : ControllerBase
     {
         private readonly IChunkRetrievalService _retrievalService;
