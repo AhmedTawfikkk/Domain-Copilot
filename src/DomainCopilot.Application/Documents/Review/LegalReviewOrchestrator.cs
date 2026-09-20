@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using DomainCopilot.Domain.Entites;
 using DomainCopilot.Domain.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace DomainCopilot.Application.Documents.Review;
 
@@ -12,6 +13,7 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
     private readonly IMemoDrafterAgent _memoDrafterAgent;
     private readonly IReviewMemoRepository _reviewMemoRepository;
     private readonly ReviewExecutionPolicy _policy;
+    private readonly ILogger<LegalReviewOrchestrator> _logger;
 
     public LegalReviewOrchestrator(
         IDocumentReviewRepository documentReviewRepository,
@@ -19,7 +21,8 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
         IRiskAssessorAgent riskAssessorAgent,
         IMemoDrafterAgent memoDrafterAgent,
         IReviewMemoRepository reviewMemoRepository,
-        ReviewExecutionPolicy policy)
+        ReviewExecutionPolicy policy,
+        ILogger<LegalReviewOrchestrator> logger)
     {
         _documentReviewRepository = documentReviewRepository;
         _clauseExtractorAgent = clauseExtractorAgent;
@@ -27,6 +30,7 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
         _memoDrafterAgent = memoDrafterAgent;
         _reviewMemoRepository = reviewMemoRepository;
         _policy = policy;
+        _logger = logger;
     }
 
     public async Task<LegalReviewResult> ReviewAsync(
@@ -98,15 +102,34 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
                 $"The review would require more than {_policy.MaxExtractionBatches} extraction batches.");
         }
 
+        _logger.LogInformation(
+            "Legal review started. DocumentId: {DocumentId}; " +
+            "ChunkCount: {ChunkCount}; BatchCount: {BatchCount}.",
+            document.DocumentId,
+            document.Chunks.Count,
+            batches.Count);
+
         var extractedClauses = new List<ExtractedClause>();
 
-        foreach (var batch in batches)
+        for (var batchIndex = 0; batchIndex < batches.Count; batchIndex++)
         {
+            var batch = batches[batchIndex];
+
+            _logger.LogInformation(
+                "Clause extraction batch started. DocumentId: {DocumentId}; " +
+                "BatchNumber: {BatchNumber}; BatchCount: {BatchCount}; " +
+                "SourceChunkCount: {SourceChunkCount}.",
+                document.DocumentId,
+                batchIndex + 1,
+                batches.Count,
+                batch.Length);
+
             ClauseExtractionResult extractionResult;
 
             try
             {
                 extractionResult = await ExecuteWithRetryAsync(
+                    "ClauseExtractor",
                     token => _clauseExtractorAgent.ExtractAsync(
                         new ClauseExtractionRequest(
                             document.DocumentId,
@@ -143,13 +166,28 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
             }
 
             extractedClauses.AddRange(extractionResult.Clauses);
+
+            _logger.LogInformation(
+                "Clause extraction batch completed. DocumentId: {DocumentId}; " +
+                "BatchNumber: {BatchNumber}; ExtractedClauseCount: " +
+                "{ExtractedClauseCount}.",
+                document.DocumentId,
+                batchIndex + 1,
+                extractionResult.Clauses.Count);
         }
+
+        _logger.LogInformation(
+            "Risk assessment started. DocumentId: {DocumentId}; " +
+            "ExtractedClauseCount: {ExtractedClauseCount}.",
+            document.DocumentId,
+            extractedClauses.Count);
 
         RiskAssessmentResult riskAssessmentResult;
 
         try
         {
             riskAssessmentResult = await ExecuteWithRetryAsync(
+                "RiskAssessor",
                 token => _riskAssessorAgent.AssessAsync(
                     new RiskAssessmentRequest(
                         document.DocumentId,
@@ -176,11 +214,24 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
                 "The Risk Assessor could not complete after retry attempts.");
         }
 
+        _logger.LogInformation(
+            "Risk assessment completed. DocumentId: {DocumentId}; " +
+            "RiskFindingCount: {RiskFindingCount}.",
+            document.DocumentId,
+            riskAssessmentResult.Findings.Count);
+
+        _logger.LogInformation(
+            "Memo drafting started. DocumentId: {DocumentId}; " +
+            "RiskFindingCount: {RiskFindingCount}.",
+            document.DocumentId,
+            riskAssessmentResult.Findings.Count);
+
         MemoDraftResult memoDraftResult;
 
         try
         {
             memoDraftResult = await ExecuteWithRetryAsync(
+                "MemoDrafter",
                 token => _memoDrafterAgent.DraftAsync(
                     new MemoDraftRequest(
                         document.DocumentId,
@@ -254,6 +305,15 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
 
             await _reviewMemoRepository.SaveChangesAsync(
                 cancellationToken);
+
+            _logger.LogInformation(
+                "Legal review completed. DocumentId: {DocumentId}; " +
+                "ReviewMemoId: {ReviewMemoId}; ExtractedClauseCount: " +
+                "{ExtractedClauseCount}; RiskFindingCount: {RiskFindingCount}.",
+                document.DocumentId,
+                reviewMemo.Id,
+                extractedClauses.Count,
+                riskAssessmentResult.Findings.Count);
         }
         catch (Exception)
         {
@@ -283,6 +343,7 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
     }
 
     private async Task<T> ExecuteWithRetryAsync<T>(
+        string agentName,
         Func<CancellationToken, Task<T>> action,
         int timeoutSeconds,
         CancellationToken cancellationToken)
@@ -315,6 +376,15 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
                 lastException = new TimeoutException(
                     "The agent attempt timed out.");
 
+                _logger.LogWarning(
+                    "Agent attempt timed out. AgentName: {AgentName}; " +
+                    "Attempt: {Attempt}; MaxAttempts: {MaxAttempts}; " +
+                    "TimeoutSeconds: {TimeoutSeconds}.",
+                    agentName,
+                    attempt,
+                    _policy.AgentMaxAttempts,
+                    timeoutSeconds);
+
                 if (attempt == _policy.AgentMaxAttempts)
                 {
                     throw lastException;
@@ -324,6 +394,14 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
                 when (IsTransientFailure(exception))
             {
                 lastException = exception;
+
+                _logger.LogWarning(
+                    exception,
+                    "Transient agent failure. AgentName: {AgentName}; " +
+                    "Attempt: {Attempt}; MaxAttempts: {MaxAttempts}.",
+                    agentName,
+                    attempt,
+                    _policy.AgentMaxAttempts);
 
                 if (attempt == _policy.AgentMaxAttempts)
                 {
@@ -358,12 +436,18 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
 
    
 
-    private static LegalReviewResult Terminate(
+    private LegalReviewResult Terminate(
         Guid documentId,
         string? fileName,
         ReviewTerminationReason reason,
         string message)
     {
+        _logger.LogWarning(
+            "Legal review terminated. DocumentId: {DocumentId}; " +
+            "Reason: {TerminationReason}.",
+            documentId,
+            reason);
+
         return new LegalReviewResult(
             LegalReviewStatus.Terminated,
             documentId,

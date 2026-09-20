@@ -22,6 +22,9 @@ public class DomainCopilotDbContext : DbContext
     public DbSet<ReviewMemoRiskFinding> ReviewMemoRiskFindings =>
         Set<ReviewMemoRiskFinding>();
 
+    public DbSet<LlmRequestTelemetry> LlmRequestTelemetry =>
+        Set<LlmRequestTelemetry>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         builder.HasPostgresExtension("vector");

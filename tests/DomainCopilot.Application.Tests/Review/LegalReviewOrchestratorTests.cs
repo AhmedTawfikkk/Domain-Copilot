@@ -1,5 +1,6 @@
 ﻿using DomainCopilot.Application.Documents.Review;
 using DomainCopilot.Domain.Enums;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace DomainCopilot.Application.Tests.Review;
@@ -255,7 +256,8 @@ public sealed class LegalReviewOrchestratorTests
                 RiskAssessorTimeoutSeconds = 5,
                 AgentMaxAttempts = 3,
                 RetryBaseDelayMilliseconds = 100
-            });
+            },
+            Mock.Of<ILogger<LegalReviewOrchestrator>>());
     }
 
     private static ReviewDocument CreateDocument()

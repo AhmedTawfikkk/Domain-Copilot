@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using DomainCopilot.Application.Providers;
+using Microsoft.Extensions.Logging;
 
 namespace DomainCopilot.Application.Documents.Review;
 
@@ -9,13 +10,16 @@ public sealed class MemoDrafterAgent : IMemoDrafterAgent
 
     private readonly ILlmProvider _llmProvider;
     private readonly IMemoDraftPromptTemplate _promptTemplate;
+    private readonly ILogger<MemoDrafterAgent> _logger;
 
     public MemoDrafterAgent(
         ILlmProvider llmProvider,
-        IMemoDraftPromptTemplate promptTemplate)
+        IMemoDraftPromptTemplate promptTemplate,
+        ILogger<MemoDrafterAgent> logger)
     {
         _llmProvider = llmProvider;
         _promptTemplate = promptTemplate;
+        _logger = logger;
     }
 
     public async Task<MemoDraftResult> DraftAsync(
@@ -31,14 +35,37 @@ public sealed class MemoDrafterAgent : IMemoDrafterAgent
 
         var prompts = _promptTemplate.Render(request);
 
+        _logger.LogInformation(
+            "Memo drafting started. DocumentId: {DocumentId}; ExtractedClauseCount: {ExtractedClauseCount}; RiskFindingCount: {RiskFindingCount}.",
+            request.DocumentId,
+            request.ExtractedClauses.Count,
+            request.RiskFindings.Count);
+
         var modelResponse = await _llmProvider.CompleteAsync(
             prompts.SystemPrompt,
             prompts.UserPrompt,
             cancellationToken);
 
-        return ParseAndValidateResponse(
+        var result = ParseAndValidateResponse(
             modelResponse,
             request);
+
+        if (result.Succeeded)
+        {
+            _logger.LogInformation(
+                "Memo drafting completed. DocumentId: {DocumentId}; CitationCount: {CitationCount}.",
+                request.DocumentId,
+                result.CitationChunkIds.Count);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Memo drafting failed validation. DocumentId: {DocumentId}; FailureReason: {FailureReason}.",
+                request.DocumentId,
+                result.FailureReason);
+        }
+
+        return result;
     }
 
     private static MemoDraftResult ParseAndValidateResponse(

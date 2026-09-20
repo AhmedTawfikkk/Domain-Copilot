@@ -1,6 +1,7 @@
 using DomainCopilot.Application.Documents.Review;
 using DomainCopilot.Application.Providers;
 using DomainCopilot.Domain.Enums;
+using Microsoft.Extensions.Logging;
 using Moq;
 
 namespace DomainCopilot.Application.Tests.Review;
@@ -32,7 +33,8 @@ public sealed class MemoDrafterAgentTests
 
         var agent = new MemoDrafterAgent(
             provider.Object,
-            promptTemplate.Object);
+            promptTemplate.Object,
+            Mock.Of<ILogger<MemoDrafterAgent>>());
 
         var result = await agent.DraftAsync(new MemoDraftRequest(
             Guid.NewGuid(),
