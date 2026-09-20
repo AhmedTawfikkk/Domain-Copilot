@@ -13,9 +13,9 @@
 		<EmbeddedResource Include="Documents\Answering\Prompts\GroundedAnswer.System.v2.md" LogicalName="DomainCopilot.Application.Documents.Answering.Prompts.GroundedAnswer.System.v2.md" />
 
 		<EmbeddedResource Include="Documents\Answering\Prompts\GroundedAnswer.User.v1.md" LogicalName="DomainCopilot.Application.Documents.Answering.Prompts.GroundedAnswer.User.v1.md" />
-		<EmbeddedResource Include="Documents\Review\Prompts\ClauseExtraction.System.v1.md" LogicalName="DomainCopilot.Application.Documents.Review.Prompts.ClauseExtraction.System.v1.md" />
+		<EmbeddedResource Include="Documents\Review\prompts\ClauseExtraction.System.v1.md" LogicalName="DomainCopilot.Application.Documents.Review.Prompts.ClauseExtraction.System.v1.md" />
 
-		<EmbeddedResource Include="Documents\Review\Prompts\ClauseExtraction.User.v1.md" LogicalName="DomainCopilot.Application.Documents.Review.Prompts.ClauseExtraction.User.v1.md" />
+		<EmbeddedResource Include="Documents\Review\prompts\ClauseExtraction.User.v1.md" LogicalName="DomainCopilot.Application.Documents.Review.Prompts.ClauseExtraction.User.v1.md" />
 		<EmbeddedResource Include="Documents\Review\prompts\MemoDraft.System.v1.md" LogicalName="DomainCopilot.Application.Documents.Review.prompts.MemoDraft.System.v1.md" />
 
 		<EmbeddedResource Include="Documents\Review\prompts\MemoDraft.User.v1.md" LogicalName="DomainCopilot.Application.Documents.Review.prompts.MemoDraft.User.v1.md" />
