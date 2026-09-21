@@ -1,6 +1,7 @@
 using DomainCopilot.Api.Observability;
 using DomainCopilot.Api.Health;
 using DomainCopilot.Api.Security;
+using DomainCopilot.Application.Authentication;
 using DomainCopilot.Application.Documents.Answering;
 using DomainCopilot.Application.Documents.Evaluation;
 using DomainCopilot.Application.Documents.Ingestion;
@@ -8,6 +9,7 @@ using DomainCopilot.Application.Documents.Retrieval;
 using DomainCopilot.Application.Documents.Review;
 using DomainCopilot.Application.Providers;
 using DomainCopilot.Infrastructure.Exports;
+using DomainCopilot.Infrastructure.Authentication;
 using DomainCopilot.Infrastructure.Ingestion;
 using DomainCopilot.Infrastructure.Observability;
 using DomainCopilot.Infrastructure.Persistence;
@@ -15,10 +17,11 @@ using DomainCopilot.Infrastructure.Persistence.Repositories;
 using DomainCopilot.Infrastructure.Providers;
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi;
 using System.Threading.RateLimiting;
 
 var environmentFilePath = Path.GetFullPath(Path.Combine(
@@ -48,51 +51,38 @@ var connectionString = Environment.GetEnvironmentVariable("POSTGRES_CONNECTION_S
 // ============================================================
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
-{
-    options.AddSecurityDefinition(
-        "ApiKey",
-        new OpenApiSecurityScheme
-        {
-            Type = SecuritySchemeType.ApiKey,
-            Name = "X-Api-Key",
-            In = ParameterLocation.Header,
-            Description =
-                "Enter the Lawyer or Counsel API key."
-        });
-
-    options.AddSecurityRequirement(document =>
-        new OpenApiSecurityRequirement
-        {
-            [new OpenApiSecuritySchemeReference(
-                "ApiKey",
-                document)] = new List<string>()
-        });
-});
+builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
-
-var apiSecurityOptions = new ApiSecurityOptions();
-
-builder.Configuration
-    .GetSection("ApiSecurity")
-    .Bind(apiSecurityOptions);
-
-apiSecurityOptions.Validate();
-builder.Services.AddSingleton(apiSecurityOptions);
 
 builder.Services
     .AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme =
-            ApiKeyAuthenticationHandler.SchemeName;
+            CookieAuthenticationDefaults.AuthenticationScheme;
 
         options.DefaultChallengeScheme =
-            ApiKeyAuthenticationHandler.SchemeName;
+            CookieAuthenticationDefaults.AuthenticationScheme;
     })
-    .AddScheme<AuthenticationSchemeOptions,
-        ApiKeyAuthenticationHandler>(
-        ApiKeyAuthenticationHandler.SchemeName,
-        _ => { });
+    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
+    {
+        options.Cookie.Name = "domain-copilot.auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Strict;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.IsEssential = true;
+        options.SlidingExpiration = true;
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.Events.OnRedirectToLogin = context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        };
+        options.Events.OnRedirectToAccessDenied = context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return Task.CompletedTask;
+        };
+    });
 
 builder.Services.AddAuthorization(options =>
 {
@@ -100,9 +90,6 @@ builder.Services.AddAuthorization(options =>
         ApiAuthorizationPolicies.Lawyer,
         policy =>
         {
-            policy.AddAuthenticationSchemes(
-                ApiKeyAuthenticationHandler.SchemeName);
-
             policy.RequireAuthenticatedUser();
 
             policy.RequireRole(ApiRoles.Lawyer);
@@ -112,9 +99,6 @@ builder.Services.AddAuthorization(options =>
         ApiAuthorizationPolicies.LawyerOrCounsel,
         policy =>
         {
-            policy.AddAuthenticationSchemes(
-                ApiKeyAuthenticationHandler.SchemeName);
-
             policy.RequireAuthenticatedUser();
 
             policy.RequireRole(
@@ -126,9 +110,6 @@ builder.Services.AddAuthorization(options =>
         ApiAuthorizationPolicies.Counsel,
         policy =>
         {
-            policy.AddAuthenticationSchemes(
-                ApiKeyAuthenticationHandler.SchemeName);
-
             policy.RequireAuthenticatedUser();
 
             policy.RequireRole(ApiRoles.Counsel);
@@ -172,6 +153,24 @@ builder.Services.AddDbContext<DomainCopilotDbContext>(options =>
     options.UseNpgsql(connectionString, npgsqlOptions =>
         npgsqlOptions.UseVector()));
 
+builder.Services
+    .AddIdentityCore<ApplicationUser>(options =>
+    {
+        options.User.RequireUniqueEmail = true;
+        options.Password.RequiredLength = 12;
+        options.Password.RequireDigit = true;
+        options.Password.RequireLowercase = true;
+        options.Password.RequireUppercase = true;
+        options.Password.RequireNonAlphanumeric = true;
+    })
+    .AddRoles<IdentityRole<Guid>>()
+    .AddEntityFrameworkStores<DomainCopilotDbContext>();
+
+builder.Services.AddScoped<IUserAuthenticationService,
+    UserAuthenticationService>();
+builder.Services.AddSingleton<ICookieUserPrincipalFactory,
+    CookieUserPrincipalFactory>();
+
 var llmTelemetryOptions = new LlmTelemetryOptions();
 
 builder.Configuration
@@ -189,6 +188,11 @@ if (builder.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
 {
     builder.Services.AddHostedService<DatabaseMigrationHostedService>();
 }
+
+// Hosted services start in registration order. The role bootstrap must run
+// after optional schema migration so first-time Docker startup has Identity
+// tables before RoleManager queries them.
+builder.Services.AddHostedService<IdentityRoleBootstrapService>();
 
 builder.Services
     .AddHealthChecks()
@@ -412,6 +416,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseAuthentication();
 app.UseRateLimiter();
