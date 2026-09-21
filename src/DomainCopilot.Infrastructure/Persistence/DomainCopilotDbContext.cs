@@ -1,10 +1,16 @@
 ﻿using DomainCopilot.Domain.Entites;
+using DomainCopilot.Infrastructure.Authentication;
 using DomainCopilot.Infrastructure.Persistence.Entites;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace DomainCopilot.Infrastructure.Persistence;
 
-public class DomainCopilotDbContext : DbContext
+public class DomainCopilotDbContext : IdentityDbContext<
+    ApplicationUser,
+    IdentityRole<Guid>,
+    Guid>
 {
     public DomainCopilotDbContext(DbContextOptions<DomainCopilotDbContext> options)
         : base(options)
@@ -25,8 +31,14 @@ public class DomainCopilotDbContext : DbContext
     public DbSet<LlmRequestTelemetry> LlmRequestTelemetry =>
         Set<LlmRequestTelemetry>();
 
+    public DbSet<ReviewRun> ReviewRuns => Set<ReviewRun>();
+
+    public DbSet<ReviewAgentStep> ReviewAgentSteps => Set<ReviewAgentStep>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
+        base.OnModelCreating(builder);
+
         builder.HasPostgresExtension("vector");
         builder.ApplyConfigurationsFromAssembly(typeof(DomainCopilotDbContext).Assembly);
     }

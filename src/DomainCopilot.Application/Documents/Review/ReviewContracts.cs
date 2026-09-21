@@ -1,4 +1,5 @@
 ﻿using DomainCopilot.Domain.Enums;
+using DomainCopilot.Domain.Entites;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,7 +33,8 @@ namespace DomainCopilot.Application.Documents.Review
     public enum LegalReviewStatus
     {
         Completed = 0,
-        Terminated = 1
+        Terminated = 1,
+        Cancelled = 2
     }
 
     public enum ReviewTerminationReason
@@ -50,11 +52,13 @@ namespace DomainCopilot.Application.Documents.Review
         RiskAssessorFailed = 10,
         MemoDrafterTimedOut = 11,
         MemoDrafterFailed = 12,
-        MemoPersistenceFailed = 13
+        MemoPersistenceFailed = 13,
+        Cancelled = 14
     }
 
     public sealed record LegalReviewRequest(
-        Guid DocumentId);
+        Guid DocumentId,
+        string InitiatedBy = "system");
 
     public sealed record ReviewDocument(
         Guid DocumentId,
@@ -116,7 +120,30 @@ namespace DomainCopilot.Application.Documents.Review
       IReadOnlyList<RiskFinding> RiskFindings,
       ReviewTerminationReason TerminationReason,
       string? TerminationMessage,
-      ReviewMemoDraft? MemoDraft = null);
+      ReviewMemoDraft? MemoDraft = null,
+      Guid ReviewRunId = default);
+
+    public enum LegalReviewProgressEventType
+    {
+        Started = 0,
+        AgentStarted = 1,
+        AgentCompleted = 2,
+        Completed = 3,
+        Terminated = 4,
+        Cancelled = 5,
+        Error = 6
+    }
+
+    public sealed record LegalReviewProgressEvent(
+        LegalReviewProgressEventType Type,
+        Guid? ReviewRunId,
+        string? AgentName = null,
+        int? BatchNumber = null,
+        int? BatchCount = null,
+        int? InputItemCount = null,
+        int? OutputItemCount = null,
+        string? Message = null,
+        LegalReviewResult? Result = null);
 
     public sealed record ClauseExtractionPrompts(
         string SystemPrompt,
@@ -237,6 +264,84 @@ namespace DomainCopilot.Application.Documents.Review
     {
         Task<LegalReviewResult> ReviewAsync(
             LegalReviewRequest request,
+            CancellationToken cancellationToken = default,
+            IReviewProgressReporter? progressReporter = null);
+    }
+
+    public interface IReviewProgressReporter
+    {
+        ValueTask ReportAsync(
+            LegalReviewProgressEvent progressEvent,
             CancellationToken cancellationToken = default);
+    }
+
+    public interface IStreamingLegalReviewService
+    {
+        IAsyncEnumerable<LegalReviewProgressEvent> StreamAsync(
+            LegalReviewRequest request,
+            CancellationToken cancellationToken = default);
+    }
+
+    public interface IReviewRunCancellationRegistry
+    {
+        IReviewRunCancellationRegistration Register(
+            Guid reviewRunId,
+            CancellationToken requestCancellationToken = default);
+
+        bool TryCancel(Guid reviewRunId);
+    }
+
+    public interface IReviewRunCancellationRegistration : IDisposable
+    {
+        CancellationToken CancellationToken { get; }
+    }
+
+    public sealed record ReviewRunSummary(
+        Guid Id,
+        Guid DocumentId,
+        string FileName,
+        string InitiatedBy,
+        string? CorrelationId,
+        string Status,
+        DateTime StartedAtUtc,
+        DateTime? CompletedAtUtc,
+        Guid? ReviewMemoId,
+        string? TerminationReason);
+
+    public sealed record ReviewAgentStepTrace(
+        Guid Id,
+        string AgentName,
+        int Sequence,
+        string Status,
+        int? InputItemCount,
+        int? OutputItemCount,
+        string? FailureReason,
+        DateTime StartedAtUtc,
+        DateTime? CompletedAtUtc);
+
+    public sealed record ReviewRunTrace(
+        ReviewRunSummary Run,
+        IReadOnlyList<ReviewAgentStepTrace> Steps);
+
+    public interface IReviewRunRepository
+    {
+        Task AddAsync(ReviewRun run, CancellationToken cancellationToken = default);
+        Task AddStepAsync(ReviewAgentStep step, CancellationToken cancellationToken = default);
+        Task<ReviewRun?> GetAsync(Guid runId, CancellationToken cancellationToken = default);
+        Task<ReviewRunTrace?> GetTraceAsync(Guid runId, CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<ReviewRunSummary>> ListAsync(CancellationToken cancellationToken = default);
+        Task SaveChangesAsync(CancellationToken cancellationToken = default);
+    }
+
+    public interface IReviewRunTracker
+    {
+        Task<ReviewRun> StartAsync(Guid documentId, string initiatedBy, CancellationToken cancellationToken = default);
+        Task<ReviewAgentStep> StartStepAsync(ReviewRun run, string agentName, int sequence, CancellationToken cancellationToken = default);
+        Task CompleteStepAsync(ReviewAgentStep step, int inputItemCount, int outputItemCount, CancellationToken cancellationToken = default);
+        Task FailStepAsync(ReviewAgentStep step, string reason, CancellationToken cancellationToken = default);
+        Task CancelStepAsync(ReviewAgentStep step, string reason, CancellationToken cancellationToken = default);
+        Task CompleteAsync(ReviewRun run, Guid reviewMemoId, CancellationToken cancellationToken = default);
+        Task TerminateAsync(ReviewRun run, string reason, CancellationToken cancellationToken = default);
+        Task CancelAsync(ReviewRun run, string reason, CancellationToken cancellationToken = default);
     }
 }

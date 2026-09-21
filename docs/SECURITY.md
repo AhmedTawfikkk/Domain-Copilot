@@ -8,20 +8,19 @@ untrusted inputs. This document records controls implemented through Day 11.
 
 ## Authentication and authorization
 
-- Every API route requires the `X-Api-Key` authentication scheme. Swagger UI
-  remains reachable so an authorized caller can enter a key, but API actions
-  still require authentication.
-- Two distinct configuration values map to authenticated roles:
-  `ApiSecurity__LawyerApiKey` maps to `Lawyer` and
-  `ApiSecurity__CounselApiKey` maps to `Counsel`.
-- API keys are required to be different and at least 24 characters. Values are
-  compared in constant time and are never logged or returned in responses.
+- Public registration and sign-in use ASP.NET Core Identity with password hashes
+  stored by the framework, never plaintext passwords.
+- Successful sign-in creates an HTTP-only, secure, same-site authentication
+  cookie. The browser client cannot read the cookie value.
+- Registration exposes a Lawyer/Counsel selector solely for the demonstrative
+  environment. Production role assignment must be performed by an administrator
+  or organization invitation flow.
 - Lawyer can ingest documents, index embeddings, retrieve evidence, ask
   grounded questions, initiate legal review, and read review memos.
 - Counsel can read review memos and is exclusively authorized to approve,
   reject, edit-and-approve, export a memo, and run the evaluation harness.
-- A valid key with an insufficient role returns `403 Forbidden`; a missing or
-  invalid key returns `401 Unauthorized`.
+- An authenticated user with an insufficient role receives `403 Forbidden`; a
+  missing, expired, or invalid session receives `401 Unauthorized`.
 
 ## Input and upload controls
 
@@ -77,14 +76,14 @@ sequentially to avoid a burst of provider calls.
 - Database and provider secrets are supplied through ignored `.env` files or
   environment variables. `.env.example` has placeholders only.
 - HTTPS redirection is enabled.
-- Provider failures are logged without API keys or full contract text.
+- Provider failures are logged without session credentials or full contract text.
 
 ## OWASP Web and LLM control mapping
 
 | Risk area | Domain Copilot control |
 |---|---|
 | Broken access control | Authentication handler assigns Lawyer/Counsel claims; policy authorization restricts approval, export, and evaluation to Counsel |
-| Authentication failures | Separate long API keys, startup validation, constant-time comparison, `401` challenge behavior |
+| Authentication failures | Identity password hashing, HTTP-only secure cookies, role claims, and `401` challenge behavior |
 | Injection | EF Core parameterization and Npgsql parameters; no SQL string concatenation from request content |
 | Insecure file handling | Extension allow-list, upload size limit, non-executable text extraction, and planned external malware scanning for production |
 | Unrestricted resource consumption | Fixed-window API rate limits and sequential evaluation execution |
@@ -96,9 +95,9 @@ sequentially to avoid a burst of provider calls.
 
 ## Known limitations and next steps
 
-- API keys are suitable for the supervised project environment, not a
-  complete production identity lifecycle. Production should use managed
-  identity/OIDC, key rotation, revocation, and per-user auditing.
+- The public Counsel role selector exists only to let an evaluator exercise both
+  workflows. Production should restrict role assignment and add account recovery,
+  email confirmation, MFA, revocation, and organization membership.
 - Rate limits are application-wide. Identity-aware quotas can be added using
   the authenticated role/identity claims.
 - Extension validation is not malware scanning. Production deployment should

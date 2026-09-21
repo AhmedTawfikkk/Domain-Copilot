@@ -3,6 +3,7 @@ using System;
 using DomainCopilot.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using Pgvector;
 namespace DomainCopilot.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(DomainCopilotDbContext))]
-    partial class DomainCopilotDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260921133737_AddIdentityAuthentication")]
+    partial class AddIdentityAuthentication
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -128,52 +131,6 @@ namespace DomainCopilot.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_DocumentChunks_ExtractionConfidence", "\"ExtractionConfidence\" >= 0.0 AND \"ExtractionConfidence\" <= 1.0");
                         });
-                });
-
-            modelBuilder.Entity("DomainCopilot.Domain.Entites.ReviewAgentStep", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("AgentName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime?>("CompletedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("FailureReason")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<int?>("InputItemCount")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("OutputItemCount")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("ReviewRunId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Sequence")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("StartedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ReviewRunId", "Sequence")
-                        .IsUnique();
-
-                    b.ToTable("ReviewAgentSteps", (string)null);
                 });
 
             modelBuilder.Entity("DomainCopilot.Domain.Entites.ReviewMemo", b =>
@@ -291,53 +248,6 @@ namespace DomainCopilot.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("ReviewMemoRiskFindings", (string)null);
-                });
-
-            modelBuilder.Entity("DomainCopilot.Domain.Entites.ReviewRun", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("CompletedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CorrelationId")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<Guid>("DocumentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("InitiatedBy")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<Guid?>("ReviewMemoId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("StartedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("TerminationReason")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DocumentId");
-
-                    b.HasIndex("ReviewMemoId");
-
-                    b.HasIndex("StartedAtUtc");
-
-                    b.ToTable("ReviewRuns", (string)null);
                 });
 
             modelBuilder.Entity("DomainCopilot.Infrastructure.Authentication.ApplicationUser", b =>
@@ -647,15 +557,6 @@ namespace DomainCopilot.Infrastructure.Persistence.Migrations
                     b.Navigation("Document");
                 });
 
-            modelBuilder.Entity("DomainCopilot.Domain.Entites.ReviewAgentStep", b =>
-                {
-                    b.HasOne("DomainCopilot.Domain.Entites.ReviewRun", null)
-                        .WithMany("Steps")
-                        .HasForeignKey("ReviewRunId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("DomainCopilot.Domain.Entites.ReviewMemo", b =>
                 {
                     b.HasOne("DomainCopilot.Domain.Entites.Document", null)
@@ -693,20 +594,6 @@ namespace DomainCopilot.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("ReviewMemo");
-                });
-
-            modelBuilder.Entity("DomainCopilot.Domain.Entites.ReviewRun", b =>
-                {
-                    b.HasOne("DomainCopilot.Domain.Entites.Document", null)
-                        .WithMany()
-                        .HasForeignKey("DocumentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("DomainCopilot.Domain.Entites.ReviewMemo", null)
-                        .WithMany()
-                        .HasForeignKey("ReviewMemoId")
-                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("DomainCopilot.Infrastructure.Persistence.Entites.DocumentChunkEmbedding", b =>
@@ -779,11 +666,6 @@ namespace DomainCopilot.Infrastructure.Persistence.Migrations
                     b.Navigation("Citations");
 
                     b.Navigation("RiskFindings");
-                });
-
-            modelBuilder.Entity("DomainCopilot.Domain.Entites.ReviewRun", b =>
-                {
-                    b.Navigation("Steps");
                 });
 #pragma warning restore 612, 618
         }
