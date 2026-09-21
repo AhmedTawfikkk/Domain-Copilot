@@ -31,6 +31,10 @@ public class DomainCopilotDbContext : IdentityDbContext<
     public DbSet<LlmRequestTelemetry> LlmRequestTelemetry =>
         Set<LlmRequestTelemetry>();
 
+    public DbSet<ReviewRun> ReviewRuns => Set<ReviewRun>();
+
+    public DbSet<ReviewAgentStep> ReviewAgentSteps => Set<ReviewAgentStep>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

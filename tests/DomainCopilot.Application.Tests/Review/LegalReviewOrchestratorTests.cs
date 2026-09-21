@@ -55,6 +55,7 @@ public sealed class LegalReviewOrchestratorTests
             new LegalReviewRequest(document.DocumentId));
 
         Assert.Equal(LegalReviewStatus.Completed, result.Status);
+        Assert.NotEqual(Guid.Empty, result.ReviewRunId);
         Assert.Equal(ReviewTerminationReason.None, result.TerminationReason);
         Assert.Equal(document.Chunks.Count, result.ExtractedClauses.Count);
         Assert.NotNull(result.MemoDraft);
@@ -239,12 +240,37 @@ public sealed class LegalReviewOrchestratorTests
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
+        var run = DomainCopilot.Domain.Entites.ReviewRun.Start(
+            Guid.NewGuid(), "test", null, DateTime.UtcNow);
+        var runTracker = new Mock<IReviewRunTracker>();
+        runTracker.Setup(item => item.StartAsync(
+                It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(run);
+        runTracker.Setup(item => item.StartStepAsync(
+                It.IsAny<DomainCopilot.Domain.Entites.ReviewRun>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((DomainCopilot.Domain.Entites.ReviewRun currentRun, string agentName, int sequence, CancellationToken _) =>
+                currentRun.StartStep(agentName, sequence, DateTime.UtcNow));
+        runTracker.Setup(item => item.CompleteStepAsync(
+                It.IsAny<DomainCopilot.Domain.Entites.ReviewAgentStep>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        runTracker.Setup(item => item.FailStepAsync(
+                It.IsAny<DomainCopilot.Domain.Entites.ReviewAgentStep>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        runTracker.Setup(item => item.CompleteAsync(
+                It.IsAny<DomainCopilot.Domain.Entites.ReviewRun>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        runTracker.Setup(item => item.TerminateAsync(
+                It.IsAny<DomainCopilot.Domain.Entites.ReviewRun>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
         return new LegalReviewOrchestrator(
             repository,
             extractor,
             assessor,
             memoDrafter.Object,
             memoRepository.Object,
+            runTracker.Object,
+            new ReviewRunCancellationRegistry(),
             new ReviewExecutionPolicy
             {
                 MaxChunksPerReview = 100,
