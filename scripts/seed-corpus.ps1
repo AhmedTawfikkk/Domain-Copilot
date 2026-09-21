@@ -1,7 +1,10 @@
 param(
     [string]$ApiUrl = "https://localhost:7082/api/Ingest",
     [string]$FolderPath = (Join-Path $PSScriptRoot "..\corpus\raw"),
-    [string]$ApiKey = $env:ApiSecurity__LawyerApiKey,
+    [Parameter(Mandatory = $true)]
+    [string]$Email,
+    [Parameter(Mandatory = $true)]
+    [string]$Password,
     [switch]$SkipCertificateValidation,
     [ValidateRange(0, [int]::MaxValue)]
     [int]$MaxFiles = 0
@@ -11,25 +14,6 @@ $ErrorActionPreference = "Stop"
 
 if (-not (Test-Path -LiteralPath $FolderPath -PathType Container)) {
     throw "Corpus folder was not found: $FolderPath"
-}
-
-if ([string]::IsNullOrWhiteSpace($ApiKey)) {
-    $environmentFilePath = Join-Path $PSScriptRoot "..\.env"
-
-    if (Test-Path -LiteralPath $environmentFilePath -PathType Leaf) {
-        $keyLine = Get-Content -LiteralPath $environmentFilePath |
-            Where-Object { $_ -match '^ApiSecurity__LawyerApiKey=' } |
-            Select-Object -First 1
-
-        if ($keyLine) {
-            $ApiKey = $keyLine.Substring(
-                "ApiSecurity__LawyerApiKey=".Length).Trim()
-        }
-    }
-}
-
-if ([string]::IsNullOrWhiteSpace($ApiKey)) {
-    throw "ApiKey is required. Pass -ApiKey, set ApiSecurity__LawyerApiKey, or configure it in .env."
 }
 
 # Invoke-WebRequest -Form is unavailable in Windows PowerShell 5.1. HttpClient's
@@ -64,8 +48,27 @@ public static class LocalDevelopmentCertificateValidator
 }
 
 $handler = [System.Net.Http.HttpClientHandler]::new()
+$handler.CookieContainer = [System.Net.CookieContainer]::new()
 $client = [System.Net.Http.HttpClient]::new($handler)
-$client.DefaultRequestHeaders.Add("X-Api-Key", $ApiKey)
+
+$apiBaseUrl = ([Uri]$ApiUrl).GetLeftPart([System.UriPartial]::Authority)
+$loginPayload = @{ email = $Email; password = $Password } | ConvertTo-Json
+$loginContent = [System.Net.Http.StringContent]::new(
+    $loginPayload,
+    [System.Text.Encoding]::UTF8,
+    "application/json")
+$loginResponse = $client.PostAsync(
+    "$apiBaseUrl/api/Auth/login",
+    $loginContent).GetAwaiter().GetResult()
+
+if (-not $loginResponse.IsSuccessStatusCode) {
+    $loginBody = $loginResponse.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+    $loginStatusCode = [int]$loginResponse.StatusCode
+    $loginResponse.Dispose()
+    throw "Login failed. HTTP $loginStatusCode: $loginBody"
+}
+
+$loginResponse.Dispose()
 $files = Get-ChildItem -LiteralPath $FolderPath -File -Recurse |
     Where-Object { $_.Extension -in ".pdf", ".docx", ".txt" }
 

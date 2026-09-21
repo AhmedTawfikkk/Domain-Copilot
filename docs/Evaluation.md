@@ -53,8 +53,8 @@ while allowing document chunk IDs to remain database-generated.
 
 1. Ingest and index the evaluation corpus, including
    `31_Indirect_Prompt_Injection_Test.txt`.
-2. Start the API with valid `Lawyer` and `Counsel` API keys configured.
-3. In Swagger, authorize using the Counsel key.
+2. Start the API and register a Counsel account.
+3. Sign in through the browser interface as Counsel.
 4. Execute `POST /api/Evaluation/run`.
 5. Record the returned metrics and provider in the pull request or release
    notes. Do not compare chunk IDs between database resets; compare case IDs

@@ -55,8 +55,9 @@ dependency.
 
 ### API protections
 
-All non-Swagger API routes require an `X-Api-Key` header. The configured API
-key is loaded from environment configuration and compared in constant time.
+The original API-key decision was superseded by ADR-0008. Protected routes now
+require an ASP.NET Core Identity session and enforce Lawyer/Counsel authorization
+policies server-side.
 
 The API uses fixed-window rate limiting:
 
@@ -80,8 +81,8 @@ chunk IDs.
   counsel and downstream services.
 - A generated memo cannot become a downloadable report without a human
   approval decision and stored evidence.
-- API clients must send `X-Api-Key`; Swagger remains reachable for discovery,
-  but protected API calls require the header.
+- API clients must authenticate through the Identity login flow; protected API
+  calls receive role authorization server-side.
 - Rate limits reduce accidental LLM/database bursts but are application-wide
   until Day 11 adds user identities and Lawyer/Counsel roles.
 - OCR tooling is an Infrastructure dependency. Deployments must configure the

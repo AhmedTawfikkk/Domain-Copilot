@@ -7,7 +7,7 @@ its own UUID in that header; otherwise the API generates one. The value is added
 the logging scope, so API, EF Core, agent, and outbound LLM logs for one request can
 be traced with the same ID.
 
-Document content, prompts, and API keys are never written to these logs. The review
+Document content, prompts, and session credentials are never written to these logs. The review
 agents log only workflow metadata such as document ID, chunk count, and result count.
 
 ## LLM request telemetry
@@ -16,7 +16,7 @@ Every direct Gemini or Ollama call writes one row to `LlmRequestTelemetry`. A fa
 therefore produces two independent rows: one failed primary attempt and, if it succeeds,
 one successful fallback attempt. The table records correlation ID, provider, model,
 operation, token usage when returned by the provider, duration, outcome, and a bounded
-failure classification. It never stores prompts, contract text, model output, or API keys.
+failure classification. It never stores prompts, contract text, model output, or session credentials.
 
 `EstimatedCostUsd` is `0` for local Ollama. For hosted providers, it remains `NULL`
 until the current account's token pricing is deliberately configured with environment
@@ -38,7 +38,8 @@ docker exec domain-copilot-db psql -U copilot -d domain_copilot -c 'SELECT "Crea
 
 ## Streaming answers
 
-`POST /api/Answers/stream` accepts the same JSON body and Lawyer API key as
+`POST /api/Answers/stream` accepts the same JSON body and authenticated Lawyer
+session as
 `POST /api/Answers`, then returns `text/event-stream`.
 
 The stream uses these SSE event names:
@@ -57,8 +58,8 @@ work when the provider honors cancellation.
 
 ## Docker Compose
 
-Copy `.env.example` to `.env`, replace the API-key placeholders, configure
-`LLM_API_KEY`, and set a non-default `POSTGRES_PASSWORD`. Then run:
+Copy `.env.example` to `.env`, configure `LLM_API_KEY`, and set a non-default
+`POSTGRES_PASSWORD`. Then run:
 
 ```powershell
 docker compose up --build
@@ -73,8 +74,10 @@ To ingest the local corpus after the API is ready:
 
 ```powershell
 .\scripts\seed-corpus.ps1 `
-  -ApiUrl "http://localhost:8080/api/Ingest"
+  -ApiUrl "http://localhost:8080/api/Ingest" `
+  -Email "lawyer@example.test" `
+  -Password "your-password"
 ```
 
-The script reads `ApiSecurity__LawyerApiKey` from the repository `.env` file, or an
-explicit `-ApiKey` can be passed for CI and other non-interactive callers.
+The script signs in with a registered Lawyer account and retains the session cookie
+inside its in-memory HTTP client for the ingestion run.
