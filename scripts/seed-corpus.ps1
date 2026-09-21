@@ -1,6 +1,7 @@
 param(
     [string]$ApiUrl = "https://localhost:7082/api/Ingest",
     [string]$FolderPath = (Join-Path $PSScriptRoot "..\corpus\raw"),
+    [string]$ApiKey = $env:ApiSecurity__LawyerApiKey,
     [switch]$SkipCertificateValidation,
     [ValidateRange(0, [int]::MaxValue)]
     [int]$MaxFiles = 0
@@ -10,6 +11,25 @@ $ErrorActionPreference = "Stop"
 
 if (-not (Test-Path -LiteralPath $FolderPath -PathType Container)) {
     throw "Corpus folder was not found: $FolderPath"
+}
+
+if ([string]::IsNullOrWhiteSpace($ApiKey)) {
+    $environmentFilePath = Join-Path $PSScriptRoot "..\.env"
+
+    if (Test-Path -LiteralPath $environmentFilePath -PathType Leaf) {
+        $keyLine = Get-Content -LiteralPath $environmentFilePath |
+            Where-Object { $_ -match '^ApiSecurity__LawyerApiKey=' } |
+            Select-Object -First 1
+
+        if ($keyLine) {
+            $ApiKey = $keyLine.Substring(
+                "ApiSecurity__LawyerApiKey=".Length).Trim()
+        }
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($ApiKey)) {
+    throw "ApiKey is required. Pass -ApiKey, set ApiSecurity__LawyerApiKey, or configure it in .env."
 }
 
 # Invoke-WebRequest -Form is unavailable in Windows PowerShell 5.1. HttpClient's
@@ -45,6 +65,7 @@ public static class LocalDevelopmentCertificateValidator
 
 $handler = [System.Net.Http.HttpClientHandler]::new()
 $client = [System.Net.Http.HttpClient]::new($handler)
+$client.DefaultRequestHeaders.Add("X-Api-Key", $ApiKey)
 $files = Get-ChildItem -LiteralPath $FolderPath -File -Recurse |
     Where-Object { $_.Extension -in ".pdf", ".docx", ".txt" }
 

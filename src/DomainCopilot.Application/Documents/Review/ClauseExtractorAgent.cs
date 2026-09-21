@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using DomainCopilot.Application.Providers;
+using Microsoft.Extensions.Logging;
 
 namespace DomainCopilot.Application.Documents.Review;
 
@@ -8,15 +9,18 @@ public sealed class ClauseExtractorAgent : IClauseExtractorAgent
     private readonly ILlmProvider _llmProvider;
     private readonly IClauseExtractionPromptTemplate _promptTemplate;
     private readonly ReviewExecutionPolicy _policy;
+    private readonly ILogger<ClauseExtractorAgent> _logger;
 
     public ClauseExtractorAgent(
         ILlmProvider llmProvider,
         IClauseExtractionPromptTemplate promptTemplate,
-        ReviewExecutionPolicy policy)
+        ReviewExecutionPolicy policy,
+        ILogger<ClauseExtractorAgent> logger)
     {
         _llmProvider = llmProvider;
         _promptTemplate = promptTemplate;
         _policy = policy;
+        _logger = logger;
     }
 
     public async Task<ClauseExtractionResult> ExtractAsync(
@@ -39,14 +43,36 @@ public sealed class ClauseExtractorAgent : IClauseExtractorAgent
             request.Chunks,
             _policy.MaxCharactersPerChunk);
 
+        _logger.LogInformation(
+            "Clause extraction started. DocumentId: {DocumentId}; ChunkCount: {ChunkCount}.",
+            request.DocumentId,
+            request.Chunks.Count);
+
         var modelResponse = await _llmProvider.CompleteAsync(
             prompts.SystemPrompt,
             prompts.UserPrompt,
             cancellationToken);
 
-        return ParseAndValidateResponse(
+        var result = ParseAndValidateResponse(
             modelResponse,
             request.Chunks);
+
+        if (result.Succeeded)
+        {
+            _logger.LogInformation(
+                "Clause extraction completed. DocumentId: {DocumentId}; ExtractedClauseCount: {ExtractedClauseCount}.",
+                request.DocumentId,
+                result.Clauses.Count);
+        }
+        else
+        {
+            _logger.LogWarning(
+                "Clause extraction failed validation. DocumentId: {DocumentId}; FailureReason: {FailureReason}.",
+                request.DocumentId,
+                result.FailureReason);
+        }
+
+        return result;
     }
 
     private static ClauseExtractionResult ParseAndValidateResponse(

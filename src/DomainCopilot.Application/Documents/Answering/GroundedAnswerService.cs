@@ -58,7 +58,7 @@ public sealed class GroundedAnswerService : IGroundedAnswerService
         return BuildValidatedResult(modelResponse, retrievedChunks);
     }
 
-    private static GroundedAnswerResult BuildValidatedResult(
+    internal static GroundedAnswerResult BuildValidatedResult(
         string modelResponse,
         IReadOnlyList<RetrievedChunk> retrievedChunks)
     {

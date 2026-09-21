@@ -1,3 +1,5 @@
+using DomainCopilot.Api.Observability;
+using DomainCopilot.Api.Health;
 using DomainCopilot.Api.Security;
 using DomainCopilot.Application.Documents.Answering;
 using DomainCopilot.Application.Documents.Evaluation;
@@ -7,11 +9,13 @@ using DomainCopilot.Application.Documents.Review;
 using DomainCopilot.Application.Providers;
 using DomainCopilot.Infrastructure.Exports;
 using DomainCopilot.Infrastructure.Ingestion;
+using DomainCopilot.Infrastructure.Observability;
 using DomainCopilot.Infrastructure.Persistence;
 using DomainCopilot.Infrastructure.Persistence.Repositories;
 using DomainCopilot.Infrastructure.Providers;
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
@@ -168,6 +172,30 @@ builder.Services.AddDbContext<DomainCopilotDbContext>(options =>
     options.UseNpgsql(connectionString, npgsqlOptions =>
         npgsqlOptions.UseVector()));
 
+var llmTelemetryOptions = new LlmTelemetryOptions();
+
+builder.Configuration
+    .GetSection("LlmTelemetry")
+    .Bind(llmTelemetryOptions);
+
+llmTelemetryOptions.Validate();
+
+builder.Services.AddSingleton(llmTelemetryOptions);
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<ILlmRequestTelemetryRecorder,
+    LlmRequestTelemetryRecorder>();
+
+if (builder.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
+{
+    builder.Services.AddHostedService<DatabaseMigrationHostedService>();
+}
+
+builder.Services
+    .AddHealthChecks()
+    .AddCheck<DatabaseReadinessHealthCheck>(
+        "postgresql",
+        tags: new[] { "ready" });
+
 // ============================================================
 // Services — LLM Providers (Day 4)
 // ============================================================
@@ -181,7 +209,11 @@ builder.Services.AddHttpClient("ollama", client =>
 builder.Services.AddScoped<OllamaProvider>(sp =>
 {
     var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
-    return new OllamaProvider(httpClientFactory.CreateClient("ollama"));
+    var telemetryRecorder = sp.GetRequiredService<ILlmRequestTelemetryRecorder>();
+
+    return new OllamaProvider(
+        httpClientFactory.CreateClient("ollama"),
+        telemetryRecorder);
 });
 
 
@@ -201,7 +233,9 @@ builder.Services.AddScoped(sp =>
     var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
     var httpClient = httpClientFactory.CreateClient("gemini");
     var apiKey = Environment.GetEnvironmentVariable("LLM_API_KEY") ?? string.Empty;
-    return new GeminiProvider(httpClient, apiKey);
+    var telemetryRecorder = sp.GetRequiredService<ILlmRequestTelemetryRecorder>();
+
+    return new GeminiProvider(httpClient, apiKey, telemetryRecorder);
 });
 
 // The active ILlmProvider is selected here based on config (LLM_PROVIDER env var)
@@ -299,6 +333,9 @@ builder.Services.AddSingleton<IGroundedAnswerPromptTemplate,
 builder.Services.AddScoped<IGroundedAnswerService,
     GroundedAnswerService>();
 
+builder.Services.AddScoped<IStreamingGroundedAnswerService,
+    StreamingGroundedAnswerService>();
+
 // ============================================================
 // Services — Clause Extractor, Risk Assessor, and Orchestration (Day 8)
 // ============================================================
@@ -375,9 +412,20 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
+
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false
+});
+
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = healthCheck => healthCheck.Tags.Contains("ready")
+});
 
 app.MapControllers();
 
@@ -390,8 +438,8 @@ app.MapPost("/test/complete", async (ILlmProvider provider, TestCompleteRequest 
         CancellationToken.None);
     return Results.Ok(new { response = result, providerType = provider.GetType().Name });
 })
-.WithName("TestComplete").RequireAuthorization(
-    ApiAuthorizationPolicies.LawyerOrCounsel); ;
+.WithName("TestComplete")
+.RequireAuthorization(ApiAuthorizationPolicies.LawyerOrCounsel);
 
 app.Run();
 

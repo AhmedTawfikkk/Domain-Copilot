@@ -39,6 +39,26 @@ namespace DomainCopilot.Application.Documents.Answering
             CancellationToken cancellationToken = default);
     }
 
+    public interface IStreamingGroundedAnswerService
+    {
+        IAsyncEnumerable<GroundedAnswerStreamEvent> StreamAsync(
+            AnswerRequest request,
+            CancellationToken cancellationToken = default);
+    }
+
+    public enum GroundedAnswerStreamEventType
+    {
+        Started = 0,
+        Delta = 1,
+        Completed = 2,
+        Refused = 3
+    }
+
+    public sealed record GroundedAnswerStreamEvent(
+        GroundedAnswerStreamEventType Type,
+        string? Delta = null,
+        GroundedAnswerResult? Result = null);
+
     public interface IGroundedAnswerPromptTemplate
     {
         string Version { get; }

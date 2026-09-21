@@ -3,6 +3,7 @@ using DomainCopilot.Application.Documents.Answering;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Text.Json;
 
 namespace DomainCopilot.Api.Controllers;
 
@@ -12,11 +13,14 @@ namespace DomainCopilot.Api.Controllers;
 public sealed class AnswersController : ControllerBase
 {
     private readonly IGroundedAnswerService _groundedAnswerService;
+    private readonly IStreamingGroundedAnswerService _streamingGroundedAnswerService;
 
     public AnswersController(
-        IGroundedAnswerService groundedAnswerService)
+        IGroundedAnswerService groundedAnswerService,
+        IStreamingGroundedAnswerService streamingGroundedAnswerService)
     {
         _groundedAnswerService = groundedAnswerService;
+        _streamingGroundedAnswerService = streamingGroundedAnswerService;
     }
 
     [HttpPost]
@@ -45,5 +49,70 @@ public sealed class AnswersController : ControllerBase
                 StatusCodes.Status503ServiceUnavailable,
                 new { error = exception.Message });
         }
+    }
+
+    [HttpPost("stream")]
+    [EnableRateLimiting("expensive-operations")]
+    public async Task Stream(
+        [FromBody] AnswerRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        Response.ContentType = "text/event-stream";
+        Response.Headers.CacheControl = "no-cache";
+        Response.Headers.Append("X-Accel-Buffering", "no");
+
+        try
+        {
+            await foreach (var streamEvent in _streamingGroundedAnswerService
+                               .StreamAsync(request, cancellationToken)
+                               .WithCancellation(cancellationToken))
+            {
+                var eventName = streamEvent.Type switch
+                {
+                    GroundedAnswerStreamEventType.Started => "started",
+                    GroundedAnswerStreamEventType.Delta => "delta",
+                    GroundedAnswerStreamEventType.Completed => "completed",
+                    _ => "refused"
+                };
+
+                object payload = streamEvent.Type == GroundedAnswerStreamEventType.Delta
+                    ? JsonSerializer.Serialize(new { delta = streamEvent.Delta })
+                    : (object?)streamEvent.Result ?? new { };
+
+                var data = payload is string serializedPayload
+                    ? serializedPayload
+                    : JsonSerializer.Serialize(payload);
+
+                await Response.WriteAsync(
+                    $"event: {eventName}\n" +
+                    $"data: {data}\n\n",
+                    cancellationToken);
+
+                await Response.Body.FlushAsync(cancellationToken);
+            }
+        }
+        catch (ArgumentException exception)
+        {
+            await WriteErrorAsync("bad-request", exception.Message, cancellationToken);
+        }
+        catch (InvalidOperationException exception)
+        {
+            await WriteErrorAsync("unavailable", exception.Message, cancellationToken);
+        }
+    }
+
+    private async Task WriteErrorAsync(
+        string code,
+        string message,
+        CancellationToken cancellationToken)
+    {
+        var data = JsonSerializer.Serialize(new { code, message });
+
+        await Response.WriteAsync(
+            $"event: error\n" +
+            $"data: {data}\n\n",
+            cancellationToken);
+
+        await Response.Body.FlushAsync(cancellationToken);
     }
 }

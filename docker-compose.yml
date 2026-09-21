@@ -4,13 +4,39 @@ services:
     container_name: domain-copilot-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: copilot
-      POSTGRES_PASSWORD: RagContract
-      POSTGRES_DB: domain_copilot
+      POSTGRES_USER: ${POSTGRES_USER:-copilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-domain_copilot}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build:
+      context: .
+      dockerfile: src/DomainCopilot.Api/Dockerfile
+    container_name: domain-copilot-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      Database__ApplyMigrationsOnStartup: "true"
+      POSTGRES_CONNECTION_STRING: Host=postgres;Port=5432;Database=${POSTGRES_DB:-domain_copilot};Username=${POSTGRES_USER:-copilot};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      PdfOcr__TesseractExecutablePath: /usr/bin/tesseract
+      PdfOcr__PdfToPpmExecutablePath: /usr/bin/pdftoppm
+    ports:
+      - "8080:8080"
 
 volumes:
   pgdata:
