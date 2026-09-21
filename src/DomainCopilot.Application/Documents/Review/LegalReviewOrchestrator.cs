@@ -12,6 +12,8 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
     private readonly IRiskAssessorAgent _riskAssessorAgent;
     private readonly IMemoDrafterAgent _memoDrafterAgent;
     private readonly IReviewMemoRepository _reviewMemoRepository;
+    private readonly IReviewRunTracker _reviewRunTracker;
+    private readonly IReviewRunCancellationRegistry _cancellationRegistry;
     private readonly ReviewExecutionPolicy _policy;
     private readonly ILogger<LegalReviewOrchestrator> _logger;
 
@@ -21,6 +23,8 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
         IRiskAssessorAgent riskAssessorAgent,
         IMemoDrafterAgent memoDrafterAgent,
         IReviewMemoRepository reviewMemoRepository,
+        IReviewRunTracker reviewRunTracker,
+        IReviewRunCancellationRegistry cancellationRegistry,
         ReviewExecutionPolicy policy,
         ILogger<LegalReviewOrchestrator> logger)
     {
@@ -29,13 +33,16 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
         _riskAssessorAgent = riskAssessorAgent;
         _memoDrafterAgent = memoDrafterAgent;
         _reviewMemoRepository = reviewMemoRepository;
+        _reviewRunTracker = reviewRunTracker;
+        _cancellationRegistry = cancellationRegistry;
         _policy = policy;
         _logger = logger;
     }
 
     public async Task<LegalReviewResult> ReviewAsync(
         LegalReviewRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IReviewProgressReporter? progressReporter = null)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -102,6 +109,26 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
                 $"The review would require more than {_policy.MaxExtractionBatches} extraction batches.");
         }
 
+        var run = await _reviewRunTracker.StartAsync(
+            document.DocumentId,
+            request.InitiatedBy,
+            cancellationToken);
+
+        using var cancellationRegistration = _cancellationRegistry.Register(
+            run.Id,
+            cancellationToken);
+        var reviewCancellationToken = cancellationRegistration.CancellationToken;
+
+        await ReportProgressAsync(
+            progressReporter,
+            new LegalReviewProgressEvent(
+                LegalReviewProgressEventType.Started,
+                run.Id,
+                BatchCount: batches.Count,
+                InputItemCount: document.Chunks.Count,
+                Message: "Legal review started."),
+            reviewCancellationToken);
+
         _logger.LogInformation(
             "Legal review started. DocumentId: {DocumentId}; " +
             "ChunkCount: {ChunkCount}; BatchCount: {BatchCount}.",
@@ -125,6 +152,23 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
                 batch.Length);
 
             ClauseExtractionResult extractionResult;
+            await ReportProgressAsync(
+                progressReporter,
+                new LegalReviewProgressEvent(
+                    LegalReviewProgressEventType.AgentStarted,
+                    run.Id,
+                    "ClauseExtractor",
+                    batchIndex + 1,
+                    batches.Count,
+                    batch.Length,
+                    Message: "Extracting clauses."),
+                cancellationToken);
+
+            var extractionStep = await _reviewRunTracker.StartStepAsync(
+                run,
+                "ClauseExtractor",
+                batchIndex + 1,
+                cancellationToken);
 
             try
             {
@@ -134,21 +178,32 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
                         new ClauseExtractionRequest(
                             document.DocumentId,
                             batch.ToList()),
-                        token),
+                    token),
                     _policy.ClauseExtractorTimeoutSeconds,
-                    cancellationToken);
+                    reviewCancellationToken);
+            }
+            catch (OperationCanceledException)
+                when (reviewCancellationToken.IsCancellationRequested)
+            {
+                await _reviewRunTracker.CancelStepAsync(
+                    extractionStep,
+                    "The legal review was cancelled.",
+                    CancellationToken.None);
+                return await CancelAsync(run, document.DocumentId, document.FileName);
             }
             catch (TimeoutException)
             {
-                return Terminate(
+                await _reviewRunTracker.FailStepAsync(extractionStep, "Agent attempt timed out.", CancellationToken.None);
+                return await TerminateAsync(run,
                     document.DocumentId,
                     document.FileName,
                     ReviewTerminationReason.ClauseExtractorTimedOut,
                     "The Clause Extractor exceeded its time limit.");
             }
-            catch (Exception)
+            catch (Exception exception)
             {
-                return Terminate(
+                await _reviewRunTracker.FailStepAsync(extractionStep, exception.Message, CancellationToken.None);
+                return await TerminateAsync(run,
                     document.DocumentId,
                     document.FileName,
                     ReviewTerminationReason.ClauseExtractorFailed,
@@ -157,7 +212,11 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
 
             if (!extractionResult.Succeeded)
             {
-                return Terminate(
+                await _reviewRunTracker.FailStepAsync(
+                    extractionStep,
+                    extractionResult.FailureReason ?? "Invalid extraction result.",
+                    cancellationToken);
+                return await TerminateAsync(run,
                     document.DocumentId,
                     document.FileName,
                     ReviewTerminationReason.ClauseExtractorFailed,
@@ -166,6 +225,25 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
             }
 
             extractedClauses.AddRange(extractionResult.Clauses);
+
+            await _reviewRunTracker.CompleteStepAsync(
+                extractionStep,
+                batch.Length,
+                extractionResult.Clauses.Count,
+                cancellationToken);
+
+            await ReportProgressAsync(
+                progressReporter,
+                new LegalReviewProgressEvent(
+                    LegalReviewProgressEventType.AgentCompleted,
+                    run.Id,
+                    "ClauseExtractor",
+                    batchIndex + 1,
+                    batches.Count,
+                    batch.Length,
+                    extractionResult.Clauses.Count,
+                    "Clause extraction completed."),
+                cancellationToken);
 
             _logger.LogInformation(
                 "Clause extraction batch completed. DocumentId: {DocumentId}; " +
@@ -183,6 +261,21 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
             extractedClauses.Count);
 
         RiskAssessmentResult riskAssessmentResult;
+        await ReportProgressAsync(
+            progressReporter,
+            new LegalReviewProgressEvent(
+                LegalReviewProgressEventType.AgentStarted,
+                run.Id,
+                "RiskAssessor",
+                InputItemCount: extractedClauses.Count,
+                Message: "Assessing risks."),
+            cancellationToken);
+
+        var riskAssessmentStep = await _reviewRunTracker.StartStepAsync(
+            run,
+            "RiskAssessor",
+            batches.Count + 1,
+            cancellationToken);
 
         try
         {
@@ -194,20 +287,31 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
                         document.FileName,
                         extractedClauses),
                     token),
-                _policy.RiskAssessorTimeoutSeconds,
-                cancellationToken);
+                    _policy.RiskAssessorTimeoutSeconds,
+                reviewCancellationToken);
+        }
+        catch (OperationCanceledException)
+            when (reviewCancellationToken.IsCancellationRequested)
+        {
+            await _reviewRunTracker.CancelStepAsync(
+                riskAssessmentStep,
+                "The legal review was cancelled.",
+                CancellationToken.None);
+            return await CancelAsync(run, document.DocumentId, document.FileName);
         }
         catch (TimeoutException)
         {
-            return Terminate(
+            await _reviewRunTracker.FailStepAsync(riskAssessmentStep, "Agent attempt timed out.", CancellationToken.None);
+            return await TerminateAsync(run,
                 document.DocumentId,
                 document.FileName,
                 ReviewTerminationReason.RiskAssessorTimedOut,
                 "The Risk Assessor exceeded its time limit.");
         }
-        catch (Exception)
+        catch (Exception exception)
         {
-            return Terminate(
+            await _reviewRunTracker.FailStepAsync(riskAssessmentStep, exception.Message, CancellationToken.None);
+            return await TerminateAsync(run,
                 document.DocumentId,
                 document.FileName,
                 ReviewTerminationReason.RiskAssessorFailed,
@@ -220,6 +324,23 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
             document.DocumentId,
             riskAssessmentResult.Findings.Count);
 
+        await _reviewRunTracker.CompleteStepAsync(
+            riskAssessmentStep,
+            extractedClauses.Count,
+            riskAssessmentResult.Findings.Count,
+            cancellationToken);
+
+        await ReportProgressAsync(
+            progressReporter,
+            new LegalReviewProgressEvent(
+                LegalReviewProgressEventType.AgentCompleted,
+                run.Id,
+                "RiskAssessor",
+                InputItemCount: extractedClauses.Count,
+                OutputItemCount: riskAssessmentResult.Findings.Count,
+                Message: "Risk assessment completed."),
+            cancellationToken);
+
         _logger.LogInformation(
             "Memo drafting started. DocumentId: {DocumentId}; " +
             "RiskFindingCount: {RiskFindingCount}.",
@@ -227,6 +348,21 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
             riskAssessmentResult.Findings.Count);
 
         MemoDraftResult memoDraftResult;
+        await ReportProgressAsync(
+            progressReporter,
+            new LegalReviewProgressEvent(
+                LegalReviewProgressEventType.AgentStarted,
+                run.Id,
+                "MemoDrafter",
+                InputItemCount: riskAssessmentResult.Findings.Count,
+                Message: "Drafting review memo."),
+            cancellationToken);
+
+        var memoDrafterStep = await _reviewRunTracker.StartStepAsync(
+            run,
+            "MemoDrafter",
+            batches.Count + 2,
+            cancellationToken);
 
         try
         {
@@ -241,20 +377,31 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
                         extractedClauses,
                         riskAssessmentResult.Findings),
                     token),
-                _policy.MemoDrafterTimeoutSeconds,
-                cancellationToken);
+                    _policy.MemoDrafterTimeoutSeconds,
+                reviewCancellationToken);
+        }
+        catch (OperationCanceledException)
+            when (reviewCancellationToken.IsCancellationRequested)
+        {
+            await _reviewRunTracker.CancelStepAsync(
+                memoDrafterStep,
+                "The legal review was cancelled.",
+                CancellationToken.None);
+            return await CancelAsync(run, document.DocumentId, document.FileName);
         }
         catch (TimeoutException)
         {
-            return Terminate(
+            await _reviewRunTracker.FailStepAsync(memoDrafterStep, "Agent attempt timed out.", CancellationToken.None);
+            return await TerminateAsync(run,
                 document.DocumentId,
                 document.FileName,
                 ReviewTerminationReason.MemoDrafterTimedOut,
                 "The Memo Drafter exceeded its time limit.");
         }
-        catch (Exception)
+        catch (Exception exception)
         {
-            return Terminate(
+            await _reviewRunTracker.FailStepAsync(memoDrafterStep, exception.Message, CancellationToken.None);
+            return await TerminateAsync(run,
                 document.DocumentId,
                 document.FileName,
                 ReviewTerminationReason.MemoDrafterFailed,
@@ -264,7 +411,11 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
         if (!memoDraftResult.Succeeded ||
             string.IsNullOrWhiteSpace(memoDraftResult.Content))
         {
-            return Terminate(
+            await _reviewRunTracker.FailStepAsync(
+                memoDrafterStep,
+                memoDraftResult.FailureReason ?? "Invalid memo draft result.",
+                cancellationToken);
+            return await TerminateAsync(run,
                 document.DocumentId,
                 document.FileName,
                 ReviewTerminationReason.MemoDrafterFailed,
@@ -282,6 +433,23 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
           finding.Recommendation,
           finding.DocumentChunkId))
       .ToList();
+
+        await _reviewRunTracker.CompleteStepAsync(
+            memoDrafterStep,
+            riskAssessmentResult.Findings.Count,
+            memoDraftResult.CitationChunkIds.Count,
+            cancellationToken);
+
+        await ReportProgressAsync(
+            progressReporter,
+            new LegalReviewProgressEvent(
+                LegalReviewProgressEventType.AgentCompleted,
+                run.Id,
+                "MemoDrafter",
+                InputItemCount: riskAssessmentResult.Findings.Count,
+                OutputItemCount: memoDraftResult.CitationChunkIds.Count,
+                Message: "Review memo drafted."),
+            cancellationToken);
 
         var citationChunkIds = memoDraftResult.CitationChunkIds
             .Concat(riskAssessmentResult.Findings
@@ -317,7 +485,7 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
         }
         catch (Exception)
         {
-            return Terminate(
+            return await TerminateAsync(run,
                 document.DocumentId,
                 document.FileName,
                 ReviewTerminationReason.MemoPersistenceFailed,
@@ -331,6 +499,8 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
             reviewMemo.ApprovalStatus,
             reviewMemo.CreatedAtUtc);
 
+        await _reviewRunTracker.CompleteAsync(run, reviewMemo.Id, cancellationToken);
+
         return new LegalReviewResult(
             LegalReviewStatus.Completed,
             document.DocumentId,
@@ -339,7 +509,8 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
             riskAssessmentResult.Findings,
             ReviewTerminationReason.None,
             null,
-            memoDraft);
+            memoDraft,
+            run.Id);
     }
 
     private async Task<T> ExecuteWithRetryAsync<T>(
@@ -434,6 +605,14 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
                exception is TaskCanceledException;
     }
 
+    private static ValueTask ReportProgressAsync(
+        IReviewProgressReporter? progressReporter,
+        LegalReviewProgressEvent progressEvent,
+        CancellationToken cancellationToken) =>
+        progressReporter is null
+            ? ValueTask.CompletedTask
+            : progressReporter.ReportAsync(progressEvent, cancellationToken);
+
    
 
     private LegalReviewResult Terminate(
@@ -443,8 +622,7 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
         string message)
     {
         _logger.LogWarning(
-            "Legal review terminated. DocumentId: {DocumentId}; " +
-            "Reason: {TerminationReason}.",
+            "Legal review terminated before a traceable run started. DocumentId: {DocumentId}; Reason: {TerminationReason}.",
             documentId,
             reason);
 
@@ -456,5 +634,58 @@ public sealed class LegalReviewOrchestrator : ILegalReviewOrchestrator
             Array.Empty<RiskFinding>(),
             reason,
             message);
+    }
+
+    private async Task<LegalReviewResult> CancelAsync(
+        ReviewRun run,
+        Guid documentId,
+        string fileName)
+    {
+        const string message = "The legal review was cancelled.";
+
+        _logger.LogInformation(
+            "Legal review cancelled. DocumentId: {DocumentId}; ReviewRunId: {ReviewRunId}.",
+            documentId,
+            run.Id);
+
+        await _reviewRunTracker.CancelAsync(run, message, CancellationToken.None);
+
+        return new LegalReviewResult(
+            LegalReviewStatus.Cancelled,
+            documentId,
+            fileName,
+            Array.Empty<ExtractedClause>(),
+            Array.Empty<RiskFinding>(),
+            ReviewTerminationReason.Cancelled,
+            message,
+            null,
+            run.Id);
+    }
+
+    private async Task<LegalReviewResult> TerminateAsync(
+        ReviewRun run,
+        Guid documentId,
+        string? fileName,
+        ReviewTerminationReason reason,
+        string message)
+    {
+        _logger.LogWarning(
+            "Legal review terminated. DocumentId: {DocumentId}; " +
+            "Reason: {TerminationReason}.",
+            documentId,
+            reason);
+
+        await _reviewRunTracker.TerminateAsync(run, reason.ToString(), CancellationToken.None);
+
+        return new LegalReviewResult(
+            LegalReviewStatus.Terminated,
+            documentId,
+            fileName,
+            Array.Empty<ExtractedClause>(),
+            Array.Empty<RiskFinding>(),
+            reason,
+            message,
+            null,
+            run.Id);
     }
 }

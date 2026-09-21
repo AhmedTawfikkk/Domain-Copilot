@@ -356,6 +356,10 @@ builder.Services.AddSingleton(reviewPolicy);
 
 builder.Services.AddScoped<IDocumentReviewRepository,
     DocumentReviewRepository>();
+builder.Services.AddScoped<IReviewRunRepository,
+    ReviewRunRepository>();
+builder.Services.AddScoped<IReviewRunTracker,
+    ReviewRunTracker>();
 
 builder.Services.AddSingleton<IClauseExtractionPromptTemplate,
     ClauseExtractionPromptTemplate>();
@@ -371,6 +375,10 @@ builder.Services.AddScoped<IRiskAssessorAgent,
 
 builder.Services.AddScoped<ILegalReviewOrchestrator,
     LegalReviewOrchestrator>();
+builder.Services.AddScoped<IStreamingLegalReviewService,
+    StreamingLegalReviewService>();
+builder.Services.AddSingleton<IReviewRunCancellationRegistry,
+    ReviewRunCancellationRegistry>();
 
 // ============================================================
 // Services — Memo Drafting and Persistence (Day 9)
