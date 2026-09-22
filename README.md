@@ -199,8 +199,9 @@ Rate limiting is enforced in-process (fixed window): `expensive-operations` 10 r
 corpus/          Contracts for demos and evaluation (real filings + synthetic)
 docs/            BRD, system design, architecture (C4/ADRs/ER), security,
                  evaluation, observability, run traces, AI usage log
-scripts/         seed-corpus.ps1 (bulk ingestion)
+scripts/         seed-corpus.ps1 + smoke-docker.ps1 (end-to-end verification)
 src/             DomainCopilot.{Domain,Application,Infrastructure,Api}
+teaching/        Training deck, hands-on lab + answer key, outcomes/assessment, mistakes guide
 tests/           DomainCopilot.{Domain,Application}.Tests
 .github/         CI: build + format + tests + vuln scan + Gitleaks
 docker-compose.yml · .env.example · Dockerfile
@@ -219,6 +220,9 @@ Documentation index:
 | `docs/OBSERVABILITY.md` · `docs/RUN-TRACE.md` | Telemetry and run-trace schema |
 | `docs/adr/*` | Eight architecture decision records |
 | `docs/AI-USAGE-LOG.md` | How AI tooling was used to build the product |
+| `teaching/DECK.md` | 22-slide training deck (design principles → pipeline → approval gate) |
+| `teaching/LAB.md` | Hands-on lab with 5 stretch challenges + trainer answer key |
+| `teaching/OUTCOMES-ASSESSMENT.md` · `teaching/TRAINEE-MISTAKES.md` | Learning outcomes/quiz rubric and the one-page trainee-mistakes guide |
 
 ---
 
