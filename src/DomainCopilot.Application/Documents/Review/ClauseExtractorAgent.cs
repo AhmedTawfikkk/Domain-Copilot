@@ -228,10 +228,7 @@ public sealed class ClauseExtractorAgent : IClauseExtractorAgent
                 clauseElement,
                 "clauseType",
                 out var clauseTypeText) ||
-            !Enum.TryParse<LegalClauseType>(
-                clauseTypeText,
-                ignoreCase: true,
-                out var clauseType))
+            !TryParseClauseType(clauseTypeText, out var clauseType))
         {
             failureReason =
      $"The Clause Extractor returned an unsupported clause type: '{clauseTypeText}'.";
@@ -272,6 +269,31 @@ public sealed class ClauseExtractorAgent : IClauseExtractorAgent
             confidence);
 
         return true;
+    }
+
+    private static bool TryParseClauseType(
+        string value,
+        out LegalClauseType clauseType)
+    {
+        var normalized = new string(
+            value
+                .Where(char.IsLetterOrDigit)
+                .ToArray());
+
+        foreach (var candidate in Enum.GetValues<LegalClauseType>())
+        {
+            if (string.Equals(
+                    candidate.ToString(),
+                    normalized,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                clauseType = candidate;
+                return true;
+            }
+        }
+
+        clauseType = default;
+        return false;
     }
 
     private static bool TryGetGuid(

@@ -37,9 +37,40 @@ public sealed class ReviewRunRepository : IReviewRunRepository
             .ToListAsync(cancellationToken);
 
         var item = run.reviewRun;
+
+        var llmCalls = await _dbContext.LlmRequestTelemetry.AsNoTracking()
+            .Where(entry => entry.CorrelationId != null && entry.CorrelationId == item.CorrelationId)
+            .OrderBy(entry => entry.CreatedAtUtc)
+            .Select(entry => new LlmCallTrace(entry.Provider, entry.Model, entry.Operation,
+                entry.InputTokens, entry.OutputTokens, entry.TotalTokens, entry.EstimatedCostUsd,
+                entry.Succeeded, entry.WasCancelled, entry.FailureReason, entry.DurationMilliseconds,
+                entry.CreatedAtUtc))
+            .ToListAsync(cancellationToken);
+
         return new ReviewRunTrace(new ReviewRunSummary(item.Id, item.DocumentId, run.FileName,
             item.InitiatedBy, item.CorrelationId, item.Status.ToString(), item.StartedAtUtc,
-            item.CompletedAtUtc, item.ReviewMemoId, item.TerminationReason), steps);
+            item.CompletedAtUtc, item.ReviewMemoId, item.TerminationReason), steps, llmCalls);
+    }
+
+    public async Task<IReadOnlyList<LlmCallTrace>> GetLlmCallsAsync(
+        string? correlationId,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.LlmRequestTelemetry.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(correlationId))
+        {
+            query = query.Where(entry => entry.CorrelationId == correlationId);
+        }
+
+        return await query.OrderByDescending(entry => entry.CreatedAtUtc)
+            .Take(limit)
+            .Select(entry => new LlmCallTrace(entry.Provider, entry.Model, entry.Operation,
+                entry.InputTokens, entry.OutputTokens, entry.TotalTokens, entry.EstimatedCostUsd,
+                entry.Succeeded, entry.WasCancelled, entry.FailureReason, entry.DurationMilliseconds,
+                entry.CreatedAtUtc))
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<ReviewRunSummary>> ListAsync(CancellationToken cancellationToken = default) =>

@@ -3,242 +3,36 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Domain Copilot legal document workspace.">
+    <meta name="description" content="Domain Copilot legal review workspace.">
     <title>Domain Copilot</title>
     <link rel="stylesheet" href="/css/site.css">
 </head>
 <body>
-    <a class="skip-link" href="#main-content">Skip to content</a>
-    <header class="app-header">
-        <a class="brand" href="/" aria-label="Domain Copilot home">
-            <span class="brand-mark" aria-hidden="true">DC</span>
-            <span>Domain <strong>Copilot</strong></span>
-        </a>
-        <div class="connection-status" id="connection-status" role="status">
-            <span class="status-dot" aria-hidden="true"></span>
-            <span>Not connected</span>
+    <main id="auth-screen" class="auth-screen">
+        <section class="auth-card" aria-labelledby="auth-title">
+            <div class="brand auth-brand"><span class="brand-mark">DC</span><span>Domain <strong>Copilot</strong></span></div>
+            <p class="eyebrow">Legal evidence workspace</p>
+            <h1 id="auth-title">Work with contracts, confidently.</h1>
+            <p class="muted">Upload agreements, ask grounded questions, and move approved reviews forward.</p>
+            <div class="auth-tabs" role="tablist"><button class="tab is-active" type="button" data-auth-tab="login">Sign in</button><button class="tab" type="button" data-auth-tab="register">Create account</button></div>
+            <form id="login-form" class="auth-form"><label>Email<input name="email" type="email" autocomplete="email" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button class="button primary full" type="submit">Sign in</button></form>
+            <form id="register-form" class="auth-form is-hidden"><label>Display name<input name="displayName" autocomplete="name" required></label><label>Email<input name="email" type="email" autocomplete="email" required></label><label>Password<input name="password" type="password" minlength="8" autocomplete="new-password" required></label><label>Role<select name="role"><option value="Lawyer">Lawyer</option><option value="Counsel">Counsel</option></select></label><button class="button primary full" type="submit">Create account</button></form>
+            <p id="auth-error" class="form-error" role="alert"></p>
+        </section>
+    </main>
+    <div id="app-screen" class="is-hidden">
+        <header class="topbar"><a class="brand" href="#"><span class="brand-mark">DC</span><span>Domain <strong>Copilot</strong></span></a><div class="topbar-user"><span id="user-name"></span><span id="user-role" class="role-badge"></span><button id="logout-button" class="button ghost" type="button">Sign out</button></div></header>
+        <div class="app-shell">
+            <aside class="sidebar" aria-label="Workspace navigation"><nav class="nav-list"><button class="nav-item is-active lawyer-only" data-view="workspace" type="button">⌂ <span>Contracts</span></button><button class="nav-item lawyer-only" data-view="ask" type="button">✦ <span>Ask documents</span></button><button class="nav-item lawyer-only" data-view="review" type="button">✓ <span>Legal review</span></button><button class="nav-item counsel-only" data-view="approval" type="button">▣ <span>Approval desk</span></button><button class="nav-item" data-view="history" type="button">◷ <span>Run history</span></button></nav><div class="sidebar-note"><strong>Evidence first</strong><span>Answers and review findings always link back to source text.</span></div></aside>
+            <section class="content" id="main-content"><div id="toast" class="toast" role="status"></div>
+                <section id="view-workspace" class="view"><div class="page-heading"><div><p class="eyebrow">Document workspace</p><h1>Prepare your legal evidence</h1><p class="muted">Upload a contract, then ask questions or run a review.</p></div><button id="health-button" class="button secondary" type="button">Check API health</button></div><div class="grid two"><article class="card"><div class="card-heading"><div><h2>Upload a contract</h2><p class="muted">PDF, DOCX, or TXT</p></div></div><form id="upload-form"><label class="dropzone" for="document-file"><span class="drop-icon">↑</span><strong>Choose a document</strong><span id="selected-file">or drop it here</span><input id="document-file" name="file" type="file" accept=".pdf,.docx,.txt" required></label><label>Source label <span class="optional">optional</span><input name="source" placeholder="e.g. Client upload"></label><button class="button primary" type="submit">Upload and prepare</button></form><div id="upload-status" class="status-box"></div></article><article class="card"><div class="card-heading"><div><h2>Current document</h2><p class="muted">The document selected for questions and review.</p></div></div><div id="current-document" class="empty-state">No document uploaded in this session.</div><button id="open-ask-button" class="button secondary" type="button">Ask about this document</button></article></div><article class="card activity-card"><div class="card-heading"><div><h2>What happens next</h2><p class="muted">Your document is prepared for grounded answers.</p></div></div><div class="workflow"><div><span>1</span><strong>Read</strong><small>Text and OCR extraction</small></div><div><span>2</span><strong>Prepare</strong><small>Chunks and source references</small></div><div><span>3</span><strong>Review</strong><small>Questions or legal review</small></div></div></article></section>
+                <section id="view-ask" class="view is-hidden"><div class="page-heading"><div><p class="eyebrow">Ask documents</p><h1>Get a grounded answer</h1><p class="muted">Answers stream as they are generated and include source citations.</p></div></div><article class="card"><form id="ask-form"><label>Your question<textarea id="question-input" rows="4" required placeholder="e.g. What is the limitation of liability?"></textarea></label><div class="form-actions"><button class="button primary" type="submit">Ask the document</button><button id="cancel-answer" class="button danger-outline is-hidden" type="button">Cancel</button></div></form><div id="answer-output" class="answer-output empty-state">Your answer will appear here.</div></article></section>
+                <section id="view-review" class="view is-hidden"><div class="page-heading"><div><p class="eyebrow">Legal review</p><h1>Review this agreement</h1><p class="muted">Run the clause extractor, risk assessor, and memo drafter.</p></div></div><article class="card"><div id="review-document" class="selected-document">No document selected.</div><button id="run-review" class="button primary" type="button">Run legal review</button><button id="cancel-review" class="button danger-outline is-hidden" type="button">Cancel review</button><div id="review-progress" class="progress-steps"></div><p id="review-overall-status" class="review-overall-status is-hidden" role="status"></p><div id="review-result"></div></article></section>
+                <section id="view-approval" class="view is-hidden"><div class="page-heading"><div><p class="eyebrow">Counsel workspace</p><h1>Approval desk</h1><p class="muted">Inspect review memos and approve only evidence-backed work.</p></div></div><div id="approval-list" class="stack"><div class="empty-state">Loading review memos…</div></div></section>
+                <section id="view-history" class="view is-hidden"><div class="page-heading"><div><p class="eyebrow">Trace and history</p><h1>Review runs</h1><p class="muted">Persistent status, agents, citations, and provider telemetry.</p></div><button id="refresh-history" class="button secondary" type="button">Refresh</button></div><div class="history-layout"><div id="history-list" class="stack"><div class="empty-state">Loading history…</div></div><article id="trace-panel" class="card trace-panel"><div class="empty-state">Select a run to inspect its trace.</div></article></div></section>
+            </section>
         </div>
-    </header>
-
-    <div class="app-shell">
-        <aside class="sidebar" aria-label="Workspace navigation">
-            <nav class="nav-list">
-                <button class="nav-item is-active" type="button" data-panel="workspace-panel">
-                    <span aria-hidden="true">⌂</span> Workspace
-                </button>
-                <button class="nav-item" type="button" data-panel="ask-panel">
-                    <span aria-hidden="true">✦</span> Ask documents
-                </button>
-                <button class="nav-item" type="button" data-panel="review-panel">
-                    <span aria-hidden="true">◇</span> Legal review
-                </button>
-                <button class="nav-item" type="button" data-panel="approval-panel">
-                    <span aria-hidden="true">✓</span> Approval desk
-                </button>
-                <button class="nav-item" type="button" data-panel="evaluation-panel">
-                    <span aria-hidden="true">⌁</span> Evaluation
-                </button>
-            </nav>
-            <div class="sidebar-footer">
-                <button class="text-button" id="open-settings" type="button">Connection settings</button>
-                <p>API keys remain in this browser tab only.</p>
-            </div>
-        </aside>
-
-        <main id="main-content">
-            <section class="panel is-active" id="workspace-panel" aria-labelledby="workspace-title">
-                <div class="page-heading">
-                    <div>
-                        <p class="eyebrow">Document workspace</p>
-                        <h1 id="workspace-title">Prepare your legal evidence</h1>
-                        <p class="lede">Upload a contract, then create embeddings so it can be searched and cited.</p>
-                    </div>
-                    <button class="secondary-button" id="check-health" type="button">Check API health</button>
-                </div>
-
-                <div class="two-column">
-                    <article class="card upload-card">
-                        <div class="card-heading">
-                            <div>
-                                <h2>Upload a document</h2>
-                                <p>PDF, DOCX, or TXT · up to 20 MB</p>
-                            </div>
-                        </div>
-                        <form id="ingest-form">
-                            <label class="file-drop-zone" for="document-file">
-                                <input id="document-file" name="file" type="file" accept=".pdf,.docx,.txt" required>
-                                <span class="file-icon" aria-hidden="true">↑</span>
-                                <strong id="file-name">Choose a contract file</strong>
-                                <span>or drag and drop it here</span>
-                            </label>
-                            <label for="document-source">Source label <span class="optional">optional</span></label>
-                            <input id="document-source" name="source" maxlength="500" placeholder="e.g. Client upload">
-                            <button class="primary-button" type="submit">Upload and extract</button>
-                        </form>
-                    </article>
-
-                    <article class="card">
-                        <div class="card-heading">
-                            <div>
-                                <h2>Index document chunks</h2>
-                                <p>Generate semantic embeddings for all pending chunks.</p>
-                            </div>
-                        </div>
-                        <label for="embedding-batch-size">Batch size</label>
-                        <input id="embedding-batch-size" type="number" min="1" max="100" value="32">
-                        <button class="primary-button" id="index-embeddings" type="button">Index pending chunks</button>
-                        <p class="hint">Indexing is required before semantic or hybrid answers can use a newly uploaded document.</p>
-                    </article>
-                </div>
-
-                <section class="recent-document card" aria-labelledby="recent-document-title">
-                    <div class="card-heading">
-                        <div>
-                            <h2 id="recent-document-title">Current document</h2>
-                            <p>Use this ID for legal review when you are ready.</p>
-                        </div>
-                    </div>
-                    <div id="document-summary" class="empty-state">No document uploaded in this session.</div>
-                </section>
-                <section class="card" aria-labelledby="activity-title">
-                    <h2 id="activity-title">Activity</h2>
-                    <ol id="activity-log" class="activity-log" aria-live="polite"></ol>
-                </section>
-            </section>
-
-            <section class="panel" id="ask-panel" aria-labelledby="ask-title" hidden>
-                <div class="page-heading">
-                    <div>
-                        <p class="eyebrow">Grounded answers</p>
-                        <h1 id="ask-title">Ask the evidence</h1>
-                        <p class="lede">Answers are accepted only when the service can attach citations from retrieved document chunks.</p>
-                    </div>
-                </div>
-                <article class="card">
-                    <form id="answer-form">
-                        <label for="question">Your question</label>
-                        <textarea id="question" rows="4" required placeholder="For example: What is the limitation of liability in the Marketing Services Agreement?"></textarea>
-                        <div class="form-row">
-                            <div>
-                                <label for="retrieval-mode">Retrieval mode</label>
-                                <select id="retrieval-mode">
-                                    <option value="2">Hybrid — recommended</option>
-                                    <option value="0">Semantic</option>
-                                    <option value="1">Keyword</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="retrieval-limit">Evidence chunks</label>
-                                <input id="retrieval-limit" type="number" min="1" max="20" value="5">
-                            </div>
-                        </div>
-                        <div class="button-row">
-                            <button class="primary-button" type="submit">Ask with citations</button>
-                            <button class="secondary-button" id="search-evidence" type="button">Preview evidence</button>
-                        </div>
-                    </form>
-                </article>
-                <section id="answer-result" class="result-region" aria-live="polite"></section>
-                <section id="evidence-result" class="result-region" aria-live="polite"></section>
-            </section>
-
-            <section class="panel" id="review-panel" aria-labelledby="review-title" hidden>
-                <div class="page-heading">
-                    <div>
-                        <p class="eyebrow">Agentic workflow</p>
-                        <h1 id="review-title">Run a legal review</h1>
-                        <p class="lede">The workflow extracts clauses, applies deterministic risk rules, and creates a memo draft for counsel approval.</p>
-                    </div>
-                </div>
-                <article class="card narrow-card">
-                    <label for="review-document-id">Document ID</label>
-                    <div class="input-action-row">
-                        <input id="review-document-id" type="text" inputmode="text" placeholder="Paste a document ID" autocomplete="off">
-                        <button class="secondary-button" id="use-current-document" type="button">Use current</button>
-                    </div>
-                    <button class="primary-button" id="run-review" type="button">Run legal review</button>
-                </article>
-                <section id="review-result" class="result-region" aria-live="polite"></section>
-            </section>
-
-            <section class="panel" id="approval-panel" aria-labelledby="approval-title" hidden>
-                <div class="page-heading">
-                    <div>
-                        <p class="eyebrow">Counsel control</p>
-                        <h1 id="approval-title">Review memo approval desk</h1>
-                        <p class="lede">Only a Counsel API key can approve, reject, edit, or export a review memo.</p>
-                    </div>
-                </div>
-                <article class="card">
-                    <div class="form-row">
-                        <div class="wide-field">
-                            <label for="memo-id">Memo ID</label>
-                            <input id="memo-id" type="text" placeholder="Paste a memo ID" autocomplete="off">
-                        </div>
-                        <div class="align-end"><button class="secondary-button" id="load-memo" type="button">Load memo</button></div>
-                    </div>
-                    <div id="memo-result" class="result-region" aria-live="polite"></div>
-                    <form id="memo-decision-form" hidden>
-                        <label for="counsel-name">Counsel name</label>
-                        <input id="counsel-name" required maxlength="200" placeholder="Your name">
-                        <label for="memo-comment">Comment <span class="optional">required when rejecting</span></label>
-                        <textarea id="memo-comment" rows="3" maxlength="2000" placeholder="Decision rationale or review notes"></textarea>
-                        <label for="revised-content">Revised memo <span class="optional">only for edit and approve</span></label>
-                        <textarea id="revised-content" rows="8" placeholder="Use only if you want to edit the memo before approval"></textarea>
-                        <div class="button-row">
-                            <button class="primary-button" id="approve-memo" type="button">Approve memo</button>
-                            <button class="secondary-button" id="edit-approve-memo" type="button">Edit and approve</button>
-                            <button class="danger-button" id="reject-memo" type="button">Reject memo</button>
-                            <button class="secondary-button" id="export-memo" type="button">Download approved DOCX</button>
-                        </div>
-                    </form>
-                </article>
-            </section>
-
-            <section class="panel" id="evaluation-panel" aria-labelledby="evaluation-title" hidden>
-                <div class="page-heading">
-                    <div>
-                        <p class="eyebrow">Counsel-only quality assurance</p>
-                        <h1 id="evaluation-title">Run the golden evaluation set</h1>
-                        <p class="lede">Checks answer status, grounded citations, refusal behaviour, and prompt-injection handling.</p>
-                    </div>
-                </div>
-                <article class="card narrow-card">
-                    <p>Evaluation invokes the active LLM provider for every golden case and may take a few minutes.</p>
-                    <button class="primary-button" id="run-evaluation" type="button">Run evaluation</button>
-                </article>
-                <section id="evaluation-result" class="result-region" aria-live="polite"></section>
-            </section>
-        </main>
     </div>
-
-    <dialog id="settings-dialog" aria-labelledby="settings-title">
-        <form method="dialog" id="settings-form">
-            <div class="dialog-heading">
-                <div>
-                    <p class="eyebrow">Session configuration</p>
-                    <h2 id="settings-title">Connect to the API</h2>
-                </div>
-                <button class="icon-button" value="cancel" aria-label="Close settings" type="submit" formnovalidate>×</button>
-            </div>
-            <p class="hint">Choose a role and enter its API key. The key is held in <code>sessionStorage</code> and is erased when the tab closes.</p>
-            <label for="api-role">Role</label>
-            <select id="api-role">
-                <option value="lawyer">Lawyer — ingest, index, ask, and review</option>
-                <option value="counsel">Counsel — view, approve, export, and evaluate</option>
-            </select>
-            <label for="api-key">API key</label>
-            <input id="api-key" type="password" autocomplete="off" minlength="24" required placeholder="Paste your API key">
-            <label class="checkbox-row"><input id="show-api-key" type="checkbox"> Show key while typing</label>
-            <div class="button-row dialog-actions">
-                <button class="secondary-button" id="clear-api-key" type="button">Clear session</button>
-                <button class="primary-button" value="save" type="submit">Save connection</button>
-            </div>
-        </form>
-    </dialog>
-
-    <template id="toast-template"><div class="toast" role="status"></div></template>
-    <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
     <script src="/js/app.js" defer></script>
 </body>
 </html>

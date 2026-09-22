@@ -53,18 +53,44 @@ namespace DomainCopilot.Infrastructure.Providers
             string userPrompt,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
         {
-            IAsyncEnumerable<string> stream;
-            try
+            Exception? primaryFailure = null;
+
+            await using var enumerator = _primary
+                .StreamCompleteAsync(systemPrompt, userPrompt, ct)
+                .GetAsyncEnumerator(ct);
+
+            while (true)
             {
-                stream = _primary.StreamCompleteAsync(systemPrompt, userPrompt, ct);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Primary LLM provider failed to start streaming, falling back to secondary provider.");
-                stream = _fallback.StreamCompleteAsync(systemPrompt, userPrompt, ct);
+                bool hasMore;
+                try
+                {
+                    hasMore = await enumerator.MoveNextAsync();
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    primaryFailure = ex;
+                    break;
+                }
+
+                if (!hasMore)
+                {
+                    yield break;
+                }
+
+                yield return enumerator.Current;
             }
 
-            await foreach (var chunk in stream.WithCancellation(ct))
+            _logger.LogWarning(
+                primaryFailure,
+                "Primary LLM provider stream failed, switching to secondary provider.");
+
+            await foreach (var chunk in _fallback
+                               .StreamCompleteAsync(systemPrompt, userPrompt, ct)
+                               .WithCancellation(ct))
             {
                 yield return chunk;
             }

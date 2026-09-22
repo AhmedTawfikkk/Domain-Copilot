@@ -1,505 +1,67 @@
 (() => {
-    "use strict";
-
-    const state = {
-        apiKey: sessionStorage.getItem("domainCopilot.apiKey") ?? "",
-        role: sessionStorage.getItem("domainCopilot.role") ?? "lawyer",
-        currentDocument: readSessionJson("domainCopilot.currentDocument"),
-        currentMemoId: sessionStorage.getItem("domainCopilot.currentMemoId") ?? ""
+  const $ = (id) => document.getElementById(id);
+  const state = { user: null, document: JSON.parse(sessionStorage.getItem('dc.document') || 'null'), answerAbort: null, reviewAbort: null, runId: null };
+  const pick = (o, ...keys) => typeof o === 'string' ? o : keys.map(k => o?.[k]).find(v => v !== undefined && v !== null);
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const notify = (message) => { const el = $('toast'); el.textContent = message; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 3500); };
+  async function api(path, options = {}) {
+    const response = await fetch(path, { credentials: 'include', ...options });
+    const text = await response.text(); let body = null; try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+    if (!response.ok) { const error = new Error(pick(body, 'error', 'message', 'title', 'detail') || `Request failed (${response.status})`); error.status = response.status; error.body = body; throw error; }
+    return body;
+  }
+  function showAuth(error = '') { $('auth-screen').classList.remove('is-hidden'); $('app-screen').classList.add('is-hidden'); $('auth-error').textContent = error; }
+  function showApp() { $('auth-screen').classList.add('is-hidden'); $('app-screen').classList.remove('is-hidden'); $('user-name').textContent = state.user.displayName || state.user.email; $('user-role').textContent = state.user.role; document.querySelectorAll('.counsel-only').forEach(e => e.classList.toggle('is-hidden', state.user.role !== 'Counsel')); document.querySelectorAll('.lawyer-only').forEach(e => e.classList.toggle('is-hidden', state.user.role !== 'Lawyer')); if (state.user.role === 'Counsel') openView('approval'); else { renderDocument(); openView('workspace'); } }
+  function openView(view) { document.querySelectorAll('.view').forEach(e => e.classList.toggle('is-hidden', e.id !== `view-${view}`)); document.querySelectorAll('.nav-item').forEach(e => e.classList.toggle('is-active', e.dataset.view === view)); if (view === 'history') loadHistory(); if (view === 'approval') loadApproval(); }
+  function renderDocument() { const d = state.document; const html = d ? `<strong>${esc(d.fileName)}</strong><br><small>${esc(d.chunkCount ?? 'Prepared')} source chunks · ready for questions and review</small>` : 'No document uploaded in this session.'; $('current-document').innerHTML = html; $('review-document').innerHTML = d ? `<strong>${esc(d.fileName)}</strong><br><small>Document ID: ${esc(d.id)}</small>` : 'No document selected.'; }
+  function formBody(form) { return Object.fromEntries(new FormData(form).entries()); }
+  function wireDropzone() {
+    const input = $('document-file');
+    const dropzone = document.querySelector('.dropzone');
+    const selectedFile = $('selected-file');
+    if (!input || !dropzone || !selectedFile) return;
+    const showFile = () => {
+      const file = input.files?.[0];
+      selectedFile.textContent = file ? `Selected: ${file.name}` : 'or drop it here';
+      dropzone.classList.toggle('has-file', Boolean(file));
     };
-
-    const elements = {
-        connectionStatus: document.querySelector("#connection-status"),
-        settingsDialog: document.querySelector("#settings-dialog"),
-        settingsForm: document.querySelector("#settings-form"),
-        apiRole: document.querySelector("#api-role"),
-        apiKey: document.querySelector("#api-key"),
-        showApiKey: document.querySelector("#show-api-key"),
-        clearApiKey: document.querySelector("#clear-api-key"),
-        fileInput: document.querySelector("#document-file"),
-        fileDropZone: document.querySelector(".file-drop-zone"),
-        fileName: document.querySelector("#file-name"),
-        ingestForm: document.querySelector("#ingest-form"),
-        documentSource: document.querySelector("#document-source"),
-        documentSummary: document.querySelector("#document-summary"),
-        embeddingBatchSize: document.querySelector("#embedding-batch-size"),
-        activityLog: document.querySelector("#activity-log"),
-        question: document.querySelector("#question"),
-        retrievalMode: document.querySelector("#retrieval-mode"),
-        retrievalLimit: document.querySelector("#retrieval-limit"),
-        answerForm: document.querySelector("#answer-form"),
-        answerResult: document.querySelector("#answer-result"),
-        evidenceResult: document.querySelector("#evidence-result"),
-        reviewDocumentId: document.querySelector("#review-document-id"),
-        reviewResult: document.querySelector("#review-result"),
-        memoId: document.querySelector("#memo-id"),
-        memoResult: document.querySelector("#memo-result"),
-        memoDecisionForm: document.querySelector("#memo-decision-form"),
-        counselName: document.querySelector("#counsel-name"),
-        memoComment: document.querySelector("#memo-comment"),
-        revisedContent: document.querySelector("#revised-content"),
-        evaluationResult: document.querySelector("#evaluation-result"),
-        toastRegion: document.querySelector("#toast-region")
-    };
-
-    initialise();
-
-    function initialise() {
-        elements.apiRole.value = state.role;
-        renderConnectionStatus();
-        renderCurrentDocument();
-        if (state.currentMemoId) elements.memoId.value = state.currentMemoId;
-
-        document.querySelectorAll(".nav-item").forEach(button => {
-            button.addEventListener("click", () => showPanel(button.dataset.panel));
-        });
-
-        document.querySelector("#open-settings").addEventListener("click", () => {
-            elements.apiRole.value = state.role;
-            elements.apiKey.value = state.apiKey;
-            elements.settingsDialog.showModal();
-        });
-
-        elements.settingsForm.addEventListener("submit", event => {
-            if (event.submitter?.value !== "save") return;
-            event.preventDefault();
-            saveConnection();
-            elements.settingsDialog.close();
-        });
-
-        elements.showApiKey.addEventListener("change", () => {
-            elements.apiKey.type = elements.showApiKey.checked ? "text" : "password";
-        });
-
-        elements.clearApiKey.addEventListener("click", () => {
-            state.apiKey = "";
-            sessionStorage.removeItem("domainCopilot.apiKey");
-            elements.apiKey.value = "";
-            renderConnectionStatus();
-            showToast("Connection key cleared from this tab.", "success");
-        });
-
-        elements.fileInput.addEventListener("change", () => updateSelectedFile(elements.fileInput.files[0]));
-        ["dragenter", "dragover"].forEach(type => elements.fileDropZone.addEventListener(type, event => {
-            event.preventDefault();
-            elements.fileDropZone.classList.add("is-dragging");
-        }));
-        ["dragleave", "drop"].forEach(type => elements.fileDropZone.addEventListener(type, event => {
-            event.preventDefault();
-            elements.fileDropZone.classList.remove("is-dragging");
-        }));
-        elements.fileDropZone.addEventListener("drop", event => {
-            const [file] = event.dataTransfer.files;
-            if (!file) return;
-            const transfer = new DataTransfer();
-            transfer.items.add(file);
-            elements.fileInput.files = transfer.files;
-            updateSelectedFile(file);
-        });
-
-        elements.ingestForm.addEventListener("submit", ingestDocument);
-        document.querySelector("#index-embeddings").addEventListener("click", indexPendingChunks);
-        document.querySelector("#check-health").addEventListener("click", checkHealth);
-        elements.answerForm.addEventListener("submit", streamAnswer);
-        document.querySelector("#search-evidence").addEventListener("click", previewEvidence);
-        document.querySelector("#use-current-document").addEventListener("click", useCurrentDocument);
-        document.querySelector("#run-review").addEventListener("click", runLegalReview);
-        document.querySelector("#load-memo").addEventListener("click", loadMemo);
-        document.querySelector("#approve-memo").addEventListener("click", () => decideMemo("approve"));
-        document.querySelector("#reject-memo").addEventListener("click", () => decideMemo("reject"));
-        document.querySelector("#edit-approve-memo").addEventListener("click", () => decideMemo("edit-and-approve"));
-        document.querySelector("#export-memo").addEventListener("click", exportMemo);
-        document.querySelector("#run-evaluation").addEventListener("click", runEvaluation);
-
-        if (!state.apiKey) elements.settingsDialog.showModal();
-    }
-
-    function showPanel(panelId) {
-        document.querySelectorAll(".panel").forEach(panel => {
-            const isActive = panel.id === panelId;
-            panel.classList.toggle("is-active", isActive);
-            panel.hidden = !isActive;
-        });
-        document.querySelectorAll(".nav-item").forEach(button => {
-            button.classList.toggle("is-active", button.dataset.panel === panelId);
-        });
-        document.querySelector("main").focus?.();
-    }
-
-    function saveConnection() {
-        state.apiKey = elements.apiKey.value.trim();
-        state.role = elements.apiRole.value;
-        sessionStorage.setItem("domainCopilot.apiKey", state.apiKey);
-        sessionStorage.setItem("domainCopilot.role", state.role);
-        renderConnectionStatus();
-        showToast(`${capitalize(state.role)} connection saved for this tab.`, "success");
-    }
-
-    function renderConnectionStatus() {
-        const label = state.apiKey ? `${capitalize(state.role)} key loaded` : "Not connected";
-        elements.connectionStatus.classList.toggle("is-connected", Boolean(state.apiKey));
-        elements.connectionStatus.lastElementChild.textContent = label;
-    }
-
-    async function ingestDocument(event) {
-        event.preventDefault();
-        const file = elements.fileInput.files[0];
-        if (!file) return showToast("Choose a document before uploading.", "error");
-
-        const formData = new FormData();
-        formData.append("file", file, file.name);
-        if (elements.documentSource.value.trim()) formData.append("source", elements.documentSource.value.trim());
-
-        await runButton(event.submitter, "Uploading…", async () => {
-            const { data, correlationId } = await apiFetch("/api/Ingest", { method: "POST", body: formData });
-            state.currentDocument = {
-                id: data.documentId,
-                fileName: file.name,
-                status: documentStatusLabel(data.status),
-                chunkCount: data.chunkCount,
-                isDuplicate: data.isDuplicate,
-                correlationId
-            };
-            sessionStorage.setItem("domainCopilot.currentDocument", JSON.stringify(state.currentDocument));
-            elements.reviewDocumentId.value = data.documentId;
-            renderCurrentDocument();
-            addActivity(`Uploaded ${file.name}: ${data.chunkCount} chunk(s) extracted.`, correlationId);
-            showToast(data.isDuplicate ? "This document already exists in the corpus." : "Document uploaded and extracted.", "success");
-        });
-    }
-
-    async function indexPendingChunks() {
-        const batchSize = clampInteger(elements.embeddingBatchSize.value, 1, 100, 32);
-        const button = document.querySelector("#index-embeddings");
-        await runButton(button, "Indexing…", async () => {
-            const { data, correlationId } = await apiFetch(`/api/Embeddings/index?batchSize=${batchSize}`, { method: "POST" });
-            addActivity(`Indexed ${data.indexedChunkCount} pending chunk(s).`, correlationId);
-            showToast(`${data.indexedChunkCount} chunk(s) indexed.`, "success");
-        });
-    }
-
-    async function checkHealth() {
-        const button = document.querySelector("#check-health");
-        await runButton(button, "Checking…", async () => {
-            const response = await fetch("/health/ready", { headers: { "X-Correlation-ID": crypto.randomUUID() } });
-            if (!response.ok) throw new ApiError(`Readiness check returned ${response.status}.`, response.status);
-            const correlationId = response.headers.get("X-Correlation-ID");
-            addActivity("API readiness check passed.", correlationId);
-            showToast("API and database are ready.", "success");
-        });
-    }
-
-    async function streamAnswer(event) {
-        event.preventDefault();
-        const question = elements.question.value.trim();
-        if (!question) return;
-        const button = event.submitter;
-        elements.answerResult.innerHTML = resultShell("Preparing grounded response…", "");
-        elements.evidenceResult.innerHTML = "";
-
-        await runButton(button, "Thinking…", async () => {
-            const request = answerRequest(question);
-            const result = await streamSse("/api/Answers/stream", request, delta => {
-                const content = elements.answerResult.querySelector(".answer-content");
-                content.textContent += delta;
-            });
-
-            if (result.type === "completed") {
-                renderAnswer(result.data, false);
-                addActivity("Received a grounded answer with citations.", result.correlationId);
-            } else if (result.type === "refused") {
-                renderAnswer(result.data, true);
-                addActivity("The service refused an unsupported or ambiguous answer.", result.correlationId);
-            } else {
-                throw new ApiError(result.data?.message ?? "The answer stream ended unexpectedly.");
-            }
-        });
-    }
-
-    async function previewEvidence() {
-        const question = elements.question.value.trim();
-        if (!question) return showToast("Enter a question to preview evidence.", "error");
-        const button = document.querySelector("#search-evidence");
-        await runButton(button, "Searching…", async () => {
-            const mode = encodeURIComponent(elements.retrievalMode.value);
-            const limit = clampInteger(elements.retrievalLimit.value, 1, 20, 5);
-            const { data, correlationId } = await apiFetch(`/api/Retrieval?query=${encodeURIComponent(question)}&mode=${mode}&limit=${limit}`);
-            renderEvidence(data);
-            addActivity(`Previewed ${data.length} retrieved evidence chunk(s).`, correlationId);
-        });
-    }
-
-    function useCurrentDocument() {
-        if (!state.currentDocument?.id) return showToast("Upload a document first, or paste a document ID.", "error");
-        elements.reviewDocumentId.value = state.currentDocument.id;
-    }
-
-    async function runLegalReview() {
-        const documentId = elements.reviewDocumentId.value.trim();
-        if (!isGuid(documentId)) return showToast("Enter a valid document ID.", "error");
-        const button = document.querySelector("#run-review");
-        elements.reviewResult.innerHTML = resultShell("The legal review agents are working. This may take a moment…", "");
-        await runButton(button, "Reviewing…", async () => {
-            const { data, correlationId } = await apiFetch("/api/LegalReviews", {
-                method: "POST",
-                json: { documentId }
-            });
-            renderReview(data);
-            if (data.memoDraft?.memoId) {
-                state.currentMemoId = data.memoDraft.memoId;
-                sessionStorage.setItem("domainCopilot.currentMemoId", state.currentMemoId);
-                elements.memoId.value = state.currentMemoId;
-            }
-            addActivity(`Legal review completed for ${data.fileName ?? documentId}.`, correlationId);
-        });
-    }
-
-    async function loadMemo() {
-        const memoId = elements.memoId.value.trim();
-        if (!isGuid(memoId)) return showToast("Enter a valid memo ID.", "error");
-        const button = document.querySelector("#load-memo");
-        await runButton(button, "Loading…", async () => {
-            const { data, correlationId } = await apiFetch(`/api/ReviewMemos/${memoId}`);
-            state.currentMemoId = memoId;
-            sessionStorage.setItem("domainCopilot.currentMemoId", memoId);
-            renderMemo(data);
-            addActivity("Loaded review memo.", correlationId);
-        });
-    }
-
-    async function decideMemo(action) {
-        const memoId = elements.memoId.value.trim();
-        const counselName = elements.counselName.value.trim();
-        const comment = elements.memoComment.value.trim();
-        if (!isGuid(memoId)) return showToast("Load a valid memo first.", "error");
-        if (!counselName) return showToast("Enter the counsel name.", "error");
-        if (action === "reject" && !comment) return showToast("A rejection comment is required.", "error");
-        if (action === "edit-and-approve" && !elements.revisedContent.value.trim()) return showToast("Enter revised memo content before approving.", "error");
-
-        const button = document.querySelector(`#${action === "edit-and-approve" ? "edit-approve" : action}-memo`);
-        const payload = action === "edit-and-approve"
-            ? { counselName, revisedContent: elements.revisedContent.value.trim(), comment: comment || null }
-            : { counselName, comment: comment || null };
-        await runButton(button, "Saving…", async () => {
-            const { data, correlationId } = await apiFetch(`/api/ReviewMemos/${memoId}/${action}`, { method: "POST", json: payload });
-            renderMemo(data);
-            addActivity(`Memo ${action.replaceAll("-", " ")} by ${counselName}.`, correlationId);
-            showToast("Memo decision saved.", "success");
-        });
-    }
-
-    async function exportMemo() {
-        const memoId = elements.memoId.value.trim();
-        if (!isGuid(memoId)) return showToast("Load a valid memo first.", "error");
-        const button = document.querySelector("#export-memo");
-        await runButton(button, "Preparing…", async () => {
-            const response = await apiFetchRaw(`/api/ReviewMemos/${memoId}/export/docx`);
-            if (!response.ok) throw await toApiError(response);
-            const fileName = readFileName(response.headers.get("content-disposition")) ?? "review-memo.docx";
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url; link.download = fileName; link.click(); URL.revokeObjectURL(url);
-            addActivity(`Downloaded ${fileName}.`, response.headers.get("X-Correlation-ID"));
-            showToast("Approved memo downloaded.", "success");
-        });
-    }
-
-    async function runEvaluation() {
-        const button = document.querySelector("#run-evaluation");
-        elements.evaluationResult.innerHTML = resultShell("Running the golden evaluation set. Keep this tab open…", "");
-        await runButton(button, "Running…", async () => {
-            const { data, correlationId } = await apiFetch("/api/Evaluation/run", { method: "POST" });
-            renderEvaluation(data);
-            addActivity("Golden evaluation run completed.", correlationId);
-        });
-    }
-
-    function answerRequest(question) {
-        return {
-            question,
-            retrievalMode: Number(elements.retrievalMode.value),
-            retrievalLimit: clampInteger(elements.retrievalLimit.value, 1, 20, 5)
-        };
-    }
-
-    async function streamSse(path, body, onDelta) {
-        const response = await apiFetchRaw(path, { method: "POST", json: body });
-        const correlationId = response.headers.get("X-Correlation-ID");
-        if (!response.ok) throw await toApiError(response);
-        if (!response.body) throw new ApiError("Streaming is unavailable in this browser.");
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let eventName = "";
-
-        while (true) {
-            const { done, value } = await reader.read();
-            buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
-            const events = buffer.split("\n\n");
-            buffer = events.pop() ?? "";
-            for (const rawEvent of events) {
-                const parsed = parseSseEvent(rawEvent);
-                if (!parsed) continue;
-                eventName = parsed.event;
-                const data = safeJson(parsed.data);
-                if (eventName === "delta") onDelta(data?.delta ?? "");
-                if (["completed", "refused", "error"].includes(eventName)) return { type: eventName, data, correlationId };
-            }
-            if (done) break;
-        }
-        return { type: eventName || "error", data: null, correlationId };
-    }
-
-    async function apiFetch(path, options = {}) {
-        const response = await apiFetchRaw(path, options);
-        if (!response.ok) throw await toApiError(response);
-        return { data: await response.json(), correlationId: response.headers.get("X-Correlation-ID") };
-    }
-
-    async function apiFetchRaw(path, { method = "GET", json, body } = {}) {
-        if (!state.apiKey) {
-            elements.settingsDialog.showModal();
-            throw new ApiError("Add an API key in Connection settings first.", 401);
-        }
-        const headers = { "X-Api-Key": state.apiKey, "X-Correlation-ID": crypto.randomUUID() };
-        if (json !== undefined) headers["Content-Type"] = "application/json";
-        return fetch(path, { method, headers, body: json !== undefined ? JSON.stringify(json) : body });
-    }
-
-    async function toApiError(response) {
-        const text = await response.text();
-        const content = safeJson(text);
-        const message = content?.error ?? content?.title ?? content?.message ?? content?.terminationMessage ?? text ?? `Request failed (${response.status}).`;
-        return new ApiError(message, response.status);
-    }
-
-    function renderCurrentDocument() {
-        if (!state.currentDocument) return;
-        const document = state.currentDocument;
-        elements.documentSummary.innerHTML = `
-            <div class="document-grid">
-                ${metadata("File", document.fileName)}
-                ${metadata("Document ID", document.id)}
-                ${metadata("Chunks", document.chunkCount ?? "—")}
-                ${metadata("Status", document.status ?? "Ingested")}
-                ${metadata("Request trace", document.correlationId ?? "—")}
-                ${metadata("Duplicate", document.isDuplicate ? "Yes" : "No")}
-            </div>`;
-    }
-
-    function renderAnswer(result, refused) {
-        const citations = result.citations ?? [];
-        elements.answerResult.innerHTML = `
-            <article class="result-card ${refused ? "is-refused" : "is-success"}">
-                <span class="status-pill ${refused ? "warn" : ""}">${refused ? "Refused safely" : "Grounded answer"}</span>
-                <h2>${refused ? "The service needs stronger evidence" : "Answer"}</h2>
-                <p class="answer-content">${escapeHtml(result.answer || result.refusalReason || "No answer was returned.")}</p>
-                ${refused ? `<p class="hint"><strong>Reason:</strong> ${escapeHtml(result.refusalReason || "Insufficient evidence.")}</p>` : renderCitations(citations)}
-            </article>`;
-    }
-
-    function renderEvidence(chunks) {
-        if (!chunks.length) {
-            elements.evidenceResult.innerHTML = resultShell("No evidence chunks matched this question.", "is-refused");
-            return;
-        }
-        elements.evidenceResult.innerHTML = `<article class="result-card"><h2>Retrieved evidence</h2><p class="hint">This is the evidence available to the grounded-answer service.</p><ul class="chunk-list">${chunks.map(chunk => `
-            <li class="chunk"><strong>${escapeHtml(chunk.fileName)}</strong><span class="risk-badge">Score ${Number(chunk.score).toFixed(3)}</span><p>${escapeHtml(chunk.clauseOrSection || "Unclassified section")} · page ${chunk.pageNumber ?? "—"}</p><p>${escapeHtml(chunk.content)}</p></li>`).join("")}</ul></article>`;
-    }
-
-    function renderReview(result) {
-        if (Number(result.status) !== 0) {
-            elements.reviewResult.innerHTML = `<article class="result-card is-refused"><span class="status-pill warn">Review terminated safely</span><h2>Review not completed</h2><p>${escapeHtml(result.terminationMessage || "The workflow could not produce a reliable review.")}</p></article>`;
-            return;
-        }
-        const findings = result.riskFindings ?? [];
-        const memo = result.memoDraft;
-        elements.reviewResult.innerHTML = `<article class="result-card is-success"><span class="status-pill">Review complete</span><h2>${escapeHtml(result.fileName || "Legal review")}</h2><p class="hint">${result.extractedClauses?.length ?? 0} clause(s) extracted · ${findings.length} risk finding(s)</p>${renderFindings(findings)}${memo ? `<hr><h3>Memo draft</h3><p class="memo-content">${escapeHtml(memo.content)}</p><p class="hint">Memo ID: <code>${memo.memoId}</code></p><button class="secondary-button" id="open-memo-from-review" type="button">Open in approval desk</button>` : ""}</article>`;
-        document.querySelector("#open-memo-from-review")?.addEventListener("click", () => {
-            elements.memoId.value = memo.memoId;
-            showPanel("approval-panel");
-            loadMemo();
-        });
-    }
-
-    function renderMemo(memo) {
-        elements.memoDecisionForm.hidden = false;
-        elements.revisedContent.value = memo.content ?? "";
-        const status = approvalStatusLabel(memo.approvalStatus);
-        elements.memoResult.innerHTML = `<article class="result-card"><span class="status-pill ${status === "Rejected" ? "error" : status === "Draft" ? "warn" : ""}">${escapeHtml(status)}</span><h2>Review memo</h2><p class="memo-content">${escapeHtml(memo.content || "")}</p><div class="document-grid">${metadata("Created", formatDate(memo.createdAtUtc))}${metadata("Decided", memo.decidedAtUtc ? formatDate(memo.decidedAtUtc) : "Pending")}${metadata("Decision by", memo.decidedBy || "—")}</div>${memo.decisionComment ? `<p class="hint"><strong>Comment:</strong> ${escapeHtml(memo.decisionComment)}</p>` : ""}</article>`;
-    }
-
-    function renderEvaluation(result) {
-        const cases = result.cases ?? [];
-        const passed = cases.filter(item =>
-            item.outcomeMatched &&
-            (item.grounded ?? true) &&
-            (item.citationMatched ?? true)).length;
-        elements.evaluationResult.innerHTML = `<article class="result-card ${passed === cases.length ? "is-success" : "is-refused"}"><h2>Evaluation result</h2><p><strong>${passed} / ${cases.length}</strong> case(s) passed all applicable expected outcome, grounding, and citation checks.</p><ul class="finding-list">${cases.map(item => { const casePassed = item.outcomeMatched && (item.grounded ?? true) && (item.citationMatched ?? true); return `<li class="finding"><strong>${escapeHtml(item.id)} · ${escapeHtml(evaluationScenarioLabel(item.scenario))}</strong><span class="status-pill ${casePassed ? "" : "warn"}">${casePassed ? "Passed" : "Needs review"}</span><p>Outcome: ${item.outcomeMatched ? "matched" : "did not match"} · Grounded: ${item.grounded == null ? "not applicable" : item.grounded ? "yes" : "no"} · Citations: ${item.citationMatched == null ? "not applicable" : item.citationMatched ? "matched" : "did not match"}</p></li>`; }).join("")}</ul></article>`;
-    }
-
-    function renderCitations(citations) {
-        if (!citations.length) return "<p class=\"hint\">No citations were returned.</p>";
-        return `<h3>Citations</h3><ul class="citation-list">${citations.map(citation => `<li class="citation"><strong>${escapeHtml(citation.fileName)}</strong><span>${escapeHtml(citation.clauseOrSection || "Unclassified section")} · page ${citation.pageNumber ?? "—"}${citation.lowConfidence ? " · low extraction confidence" : ""}</span></li>`).join("")}</ul>`;
-    }
-
-    function renderFindings(findings) {
-        if (!findings.length) return "<p class=\"hint\">No risk findings were produced for the extracted clauses.</p>";
-        return `<h3>Risk findings</h3><ul class="finding-list">${findings.map(finding => `<li class="finding"><strong>${escapeHtml(finding.title)}</strong><span class="risk-badge ${riskSeverityLabel(finding.severity).toLowerCase()}">${escapeHtml(riskSeverityLabel(finding.severity))}</span><p>${escapeHtml(finding.rationale)}</p><p><strong>Recommendation:</strong> ${escapeHtml(finding.recommendation)}</p></li>`).join("")}</ul>`;
-    }
-
-    function resultShell(message, modifier) {
-        return `<article class="result-card ${modifier}"><p class="streaming-indicator">${escapeHtml(message)}</p><p class="answer-content"></p></article>`;
-    }
-
-    function addActivity(message, correlationId) {
-        const entry = document.createElement("li");
-        entry.textContent = `${new Date().toLocaleTimeString()} — ${message}${correlationId ? ` Trace: ${correlationId}` : ""}`;
-        elements.activityLog.prepend(entry);
-    }
-
-    async function runButton(button, busyLabel, operation) {
-        const originalLabel = button.textContent;
-        button.disabled = true;
-        button.textContent = busyLabel;
-        try {
-            await operation();
-        } catch (error) {
-            console.error(error);
-            const message = error instanceof ApiError ? error.message : "An unexpected error occurred.";
-            showToast(message, "error");
-            addActivity(`Request failed: ${message}`);
-        } finally {
-            button.disabled = false;
-            button.textContent = originalLabel;
-        }
-    }
-
-    function parseSseEvent(raw) {
-        const lines = raw.replace(/\r/g, "").split("\n");
-        const event = lines.find(line => line.startsWith("event:"))?.slice(6).trim();
-        const data = lines.filter(line => line.startsWith("data:")).map(line => line.slice(5).trim()).join("\n");
-        return event ? { event, data } : null;
-    }
-
-    function updateSelectedFile(file) { elements.fileName.textContent = file ? file.name : "Choose a contract file"; }
-    function metadata(label, value) { return `<div><span class="metadata-label">${escapeHtml(label)}</span><span class="metadata-value">${escapeHtml(String(value))}</span></div>`; }
-    function safeJson(value) { try { return JSON.parse(value); } catch { return null; } }
-    function readSessionJson(key) { const value = sessionStorage.getItem(key); return value ? safeJson(value) : null; }
-    function escapeHtml(value) { const node = document.createElement("span"); node.textContent = value ?? ""; return node.innerHTML; }
-    function capitalize(value) { return String(value).charAt(0).toUpperCase() + String(value).slice(1); }
-    function isGuid(value) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value); }
-    function clampInteger(value, min, max, fallback) { const number = Number.parseInt(value, 10); return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback; }
-    function enumLabel(value) { return String(value ?? "Unknown").replace(/([a-z])([A-Z])/g, "$1 $2"); }
-    function approvalStatusLabel(value) { return ["Draft", "Approved", "Rejected"][Number(value)] ?? enumLabel(value); }
-    function documentStatusLabel(value) { return ["Pending", "Processing", "Chunked", "Indexed", "Failed"][Number(value)] ?? enumLabel(value); }
-    function riskSeverityLabel(value) { return ["Low", "Medium", "High", "Critical"][Number(value)] ?? enumLabel(value); }
-    function evaluationScenarioLabel(value) { return ["Baseline", "Out of corpus", "Ambiguous", "Direct prompt injection", "Indirect prompt injection", "Conflicting sources"][Number(value)] ?? enumLabel(value); }
-    function formatDate(value) { return new Date(value).toLocaleString(); }
-    function readFileName(value) { const match = /filename\*?=(?:UTF-8''|\")?([^;\"]+)/i.exec(value ?? ""); return match ? decodeURIComponent(match[1].replaceAll("\"", "")) : null; }
-    function showToast(message, kind = "") { const toast = document.querySelector("#toast-template").content.firstElementChild.cloneNode(true); toast.textContent = message; toast.classList.toggle("is-error", kind === "error"); toast.classList.toggle("is-success", kind === "success"); elements.toastRegion.append(toast); setTimeout(() => toast.remove(), 5000); }
-
-    class ApiError extends Error { constructor(message, status) { super(message); this.name = "ApiError"; this.status = status; } }
+    input.addEventListener('change', showFile);
+    ['dragenter', 'dragover'].forEach(type => dropzone.addEventListener(type, event => {
+      event.preventDefault();
+      dropzone.classList.add('is-dragging');
+    }));
+    ['dragleave', 'drop'].forEach(type => dropzone.addEventListener(type, event => {
+      event.preventDefault();
+      dropzone.classList.remove('is-dragging');
+    }));
+    dropzone.addEventListener('drop', event => {
+      const files = event.dataTransfer?.files;
+      if (!files?.length) return;
+      const transfer = new DataTransfer();
+      transfer.items.add(files[0]);
+      input.files = transfer.files;
+      showFile();
+    });
+  }
+  async function authenticate(path, form) { $('auth-error').textContent = ''; try { await api(path, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(formBody(form)) }); state.user = await api('/api/Auth/me'); showApp(); } catch (e) { showAuth(e.message); } }
+  function wireAuth() { document.querySelectorAll('[data-auth-tab]').forEach(tab => tab.addEventListener('click', () => { const register = tab.dataset.authTab === 'register'; document.querySelectorAll('[data-auth-tab]').forEach(t => t.classList.toggle('is-active', t === tab)); $('login-form').classList.toggle('is-hidden', register); $('register-form').classList.toggle('is-hidden', !register); $('auth-error').textContent = ''; })); $('login-form').addEventListener('submit', e => { e.preventDefault(); authenticate('/api/Auth/login', e.currentTarget); }); $('register-form').addEventListener('submit', e => { e.preventDefault(); authenticate('/api/Auth/register', e.currentTarget); }); $('logout-button').addEventListener('click', async () => { try { await api('/api/Auth/logout', {method:'POST'}); } finally { state.user = null; showAuth(); } }); }
+  async function upload(e) { e.preventDefault(); const form = e.currentTarget; const file = $('document-file').files[0]; if (!file) return; const status = $('upload-status'); status.className = 'status-box'; status.textContent = 'Reading document…'; const data = new FormData(); data.append('file', file); data.append('source', form.source.value || 'Client upload'); try { const result = await api('/api/Ingest', {method:'POST', body:data}); state.document = { id: pick(result,'documentId','DocumentId'), fileName: pick(result,'fileName','FileName') || file.name, chunkCount: pick(result,'chunkCount','ChunkCount') }; sessionStorage.setItem('dc.document', JSON.stringify(state.document)); status.className = 'status-box success'; status.innerHTML = `Preparing for analysis…<br><strong>Ready for questions and review.</strong>${file.name.toLowerCase().endsWith('.pdf') ? '<br><small>Scanned pages are processed with OCR when needed.</small>' : ''}`; renderDocument(); notify('Document prepared'); } catch (err) { if (err.status === 409 && err.body) { const duplicate = err.body; state.document = { id: pick(duplicate,'documentId','DocumentId'), fileName: file.name, chunkCount: pick(duplicate,'chunkCount','ChunkCount') }; sessionStorage.setItem('dc.document', JSON.stringify(state.document)); renderDocument(); status.className = 'status-box success'; status.innerHTML = `<strong>This document already exists.</strong><br>Using the existing prepared document with ${esc(state.document.chunkCount)} chunks.`; notify('Duplicate detected: existing document selected'); return; } status.className = 'status-box error'; status.textContent = `Could not prepare this document. ${err.message}`; } }
+  async function parseSse(buffer, onEvent) { const parts = buffer.split(/\r?\n\r?\n/); const rest = parts.pop(); for (const block of parts) { const event = (block.match(/^event:\s*(.*)$/m) || [,'message'])[1]; const line = (block.match(/^data:\s*(.*)$/m) || [,'{}'])[1]; try { await onEvent(event, JSON.parse(line)); } catch { await onEvent(event, {delta:line}); } } return rest; }
+  async function stream(path, body, handlers, signal) { const response = await fetch(path, {method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body), signal}); if (!response.ok) throw new Error(`Request failed (${response.status})`); const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = ''; while (true) { const part = await reader.read(); if (part.done) break; buffer += decoder.decode(part.value, {stream:true}); buffer = await parseSse(buffer, (event,data) => handlers[event]?.(data)); } if (buffer.trim()) await parseSse(`${buffer}\n\n`, (event,data) => handlers[event]?.(data)); }
+  function citations(items) { return (items || []).map(c => `<span class="citation">${esc(pick(c,'fileName','FileName'))} · ${esc(pick(c,'clauseOrSection','ClauseOrSection') || 'Source')} · p.${esc(pick(c,'pageNumber','PageNumber') || '?')}</span>`).join(''); }
+  function severity(value) { const names = ['Low', 'Medium', 'High', 'Critical']; const number = Number(value); return Number.isInteger(number) && names[number] ? names[number] : String(value || 'Risk'); }
+  function approvalStatus(value) { const names = ['Draft', 'Approved', 'Rejected']; const number = Number(value); return Number.isInteger(number) && names[number] ? names[number] : String(value || 'Draft'); }
+  function memoHtml(value) { const safe = esc(value || 'Memo saved. Open it from history for the full text.'); return safe.replace(/^### (.+)$/gm, '<h4>$1</h4>').replace(/^## (.+)$/gm, '<h3>$1</h3>').replace(/^# (.+)$/gm, '<h2>$1</h2>').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/^\* (.+)$/gm, '<li>$1</li>').replace(/(?:<li>.*<\/li>\n?)+/g, block => `<ul>${block}</ul>`).replace(/\n/g, '<br>'); }
+  async function ask(e) { e.preventDefault(); if (!state.document) return notify('Upload a document first'); const out = $('answer-output'); out.className = 'answer-output'; out.textContent = ''; $('cancel-answer').classList.remove('is-hidden'); state.answerAbort = new AbortController(); try { await stream('/api/Answers/stream', {question:$('question-input').value}, {started:() => out.textContent = 'Thinking with your evidence…\n\n', delta:d => { out.textContent += pick(d,'delta','Delta') || ''; }, completed:d => { const answer = pick(d,'answer','Answer') || out.textContent; out.innerHTML = `<div class="answer-card"><strong>Answer</strong><p>${esc(answer)}</p><div>${citations(pick(d,'citations','Citations'))}</div></div>`; }, refused:d => { out.innerHTML = `<div class="refusal"><strong>Unable to answer safely</strong><p>${esc(pick(d,'refusalReason','RefusalReason') || pick(d,'answer','Answer'))}</p></div>`; }, error:d => { out.innerHTML = `<div class="refusal"><strong>Answer unavailable</strong><p>${esc(pick(d,'message','Message') || 'Something went wrong. Please try again.')}</p></div>`; } }, state.answerAbort.signal); } catch (err) { if (err.name !== 'AbortError') out.textContent = err.message; } finally { state.answerAbort = null; $('cancel-answer').classList.add('is-hidden'); } }
+  function resetProgress() { $('review-overall-status').classList.add('is-hidden'); $('review-overall-status').textContent = ''; $('review-progress').innerHTML = ['Extracting clauses','Assessing risks','Drafting review memo'].map((x,i) => `<div class="progress-step" data-step="${i}"><span>${i+1}</span><strong>${x}</strong><small class="step-status">Waiting</small></div>`).join(''); }
+  async function progress(data) { const name = String(pick(data,'agentName','AgentName') || '').toLowerCase(); const index = name.includes('clause') ? 0 : name.includes('risk') ? 1 : name.includes('memo') ? 2 : -1; if (index < 0) return; const steps = [...document.querySelectorAll('.progress-step')]; const eventType = Number(pick(data,'type','Type')); const completed = eventType === 2 || Number(pick(data,'status','Status')) === 2; if (completed) { steps[index].classList.remove('active'); steps[index].classList.add('done'); steps[index].querySelector('.step-status').textContent = 'Completed'; } else { steps.slice(0, index).forEach(step => { step.classList.remove('active'); step.classList.add('done'); step.querySelector('.step-status').textContent = 'Completed'; }); steps[index].classList.add('active'); steps[index].querySelector('.step-status').textContent = 'In progress'; } await new Promise(resolve => setTimeout(resolve, completed ? 40 : 120)); }
+  async function runReview() { if (!state.document) return notify('Upload a document first'); resetProgress(); $('review-result').innerHTML = ''; $('run-review').classList.add('is-hidden'); $('cancel-review').classList.remove('is-hidden'); $('cancel-review').disabled = false; $('cancel-review').textContent = 'Cancel review'; state.reviewAbort = new AbortController(); try { await stream('/api/LegalReviews/stream', {documentId:state.document.id}, {started:d => { state.runId = pick(d,'reviewRunId','ReviewRunId','runId','RunId'); }, progress, completed:d => { [...document.querySelectorAll('.progress-step')].forEach(x => { x.classList.add('done'); x.querySelector('.step-status').textContent = 'Completed'; }); $('review-overall-status').textContent = 'Completed'; $('review-overall-status').classList.remove('is-hidden'); const result = pick(d,'result','Result') || d; const risks = pick(result,'riskFindings','RiskFindings') || []; const draft = pick(result,'memoDraft','MemoDraft'); const memoText = typeof draft === 'object' ? pick(draft,'content','Content') : draft; $('review-result').innerHTML = `<div class="memo-card"><h2>Review completed</h2><div class="memo-content">${memoHtml(memoText)}</div><h3>Risk findings</h3>${risks.length ? risks.map(r => `<div class="risk-card"><strong>${esc(severity(pick(r,'severity','Severity')))}</strong><p>${esc(pick(r,'description','Description') || pick(r,'title','Title'))}</p><div>${citations(pick(r,'citations','Citations'))}</div></div>`).join('') : '<p class="muted">No risks were returned.</p>'}</div>`; }, terminated:d => { $('review-overall-status').textContent = 'Review stopped'; $('review-overall-status').classList.remove('is-hidden'); $('review-result').innerHTML = `<div class="refusal">${esc(pick(d,'message','Message') || 'Review terminated.')}</div>`; }, cancelled:() => { $('review-overall-status').textContent = 'Review cancelled'; $('review-overall-status').classList.remove('is-hidden'); $('review-result').innerHTML = '<div class="refusal">Review cancelled.</div>'; } }, state.reviewAbort.signal); } catch (err) { if (err.name !== 'AbortError') $('review-result').innerHTML = `<div class="refusal">${esc(err.message)}</div>`; } finally { state.reviewAbort = null; $('run-review').classList.remove('is-hidden'); $('cancel-review').classList.add('is-hidden'); $('cancel-review').disabled = false; $('cancel-review').textContent = 'Cancel review'; } }
+  async function cancelReview() { if (!state.runId) return; const button = $('cancel-review'); button.disabled = true; button.textContent = 'Cancelling…'; try { await api(`/api/ReviewRuns/${state.runId}/cancel`, {method:'POST'}); notify('Cancellation requested'); /* Keep the SSE connection open so the server can send the cancelled event and persist the final run state. */ } catch (e) { button.disabled = false; button.textContent = 'Cancel review'; notify(e.message); } }
+  function runSummary(run) { return `<div class="history-item" data-run-id="${esc(pick(run,'id','Id','runId','RunId'))}"><strong>${esc(pick(run,'fileName','FileName') || 'Review run')}</strong><small>${esc(pick(run,'status','Status') || 'Unknown')} · ${esc(pick(run,'createdAtUtc','CreatedAtUtc') || '')}</small></div>`; }
+  async function loadHistory() { try { const runs = await api('/api/ReviewRuns'); const list = Array.isArray(runs) ? runs : pick(runs,'items','Items') || []; $('history-list').innerHTML = list.length ? list.map(runSummary).join('') : '<div class="empty-state">No review runs yet.</div>'; document.querySelectorAll('[data-run-id]').forEach(e => e.addEventListener('click', () => loadTrace(e.dataset.runId))); } catch (e) { $('history-list').innerHTML = `<div class="refusal">${esc(e.message)}</div>`; } }
+  async function loadTrace(id) { try { const trace = await api(`/api/ReviewRuns/${id}`); const run = pick(trace,'run','Run') || trace; const steps = pick(trace,'steps','Steps') || []; const calls = pick(trace,'llmCalls','LlmCalls') || []; $('trace-panel').innerHTML = `<h2>Run trace</h2><div class="trace-row"><span>Document</span><strong>${esc(pick(run,'fileName','FileName'))}</strong></div><div class="trace-row"><span>Status</span><strong>${esc(pick(run,'status','Status'))}</strong></div><div class="trace-row"><span>Correlation ID</span><strong>${esc(pick(run,'correlationId','CorrelationId') || '—')}</strong></div><div class="trace-row"><span>Started</span><strong>${esc(pick(run,'startedAtUtc','StartedAtUtc') || '—')}</strong></div><div class="trace-row"><span>Termination reason</span><strong>${esc(pick(run,'terminationReason','TerminationReason') || '—')}</strong></div><h3>Agent steps</h3>${steps.length ? steps.map(s => `<div class="trace-row"><span>${esc(pick(s,'agentName','AgentName'))}</span><span>${esc(pick(s,'status','Status'))} · ${esc(pick(s,'inputItemCount','InputItemCount') ?? '—')} in / ${esc(pick(s,'outputItemCount','OutputItemCount') ?? '—')} out</span></div>`).join('') : '<p class="muted">No agent steps were recorded.</p>'}<h3>LLM telemetry</h3>${calls.length ? calls.map(c => `<div class="trace-row"><span>${esc(pick(c,'provider','Provider'))} · ${esc(pick(c,'model','Model'))} · ${esc(pick(c,'operation','Operation'))}</span><span>${esc(pick(c,'totalTokens','TotalTokens') ?? '—')} tokens · $${Number(pick(c,'estimatedCostUsd','EstimatedCostUsd') ?? 0).toFixed(4)} · ${esc(pick(c,'durationMilliseconds','DurationMilliseconds') ?? '—')} ms · ${pick(c,'succeeded','Succeeded') ? 'OK' : 'FAILED'}</span></div>`).join('') : '<p class="muted">No LLM calls recorded for this run.</p>'}`; } catch (e) { $('trace-panel').innerHTML = `<div class="refusal">${esc(e.message)}</div>`; } }
+  async function loadApproval() { try { const runs = await api('/api/ReviewRuns'); const list = (Array.isArray(runs) ? runs : pick(runs,'items','Items') || []).filter(r => pick(r,'reviewMemoId','ReviewMemoId','memoId','MemoId')); $('approval-list').innerHTML = list.length ? list.map(r => `<article class="card memo-card" data-memo-id="${esc(pick(r,'reviewMemoId','ReviewMemoId','memoId','MemoId'))}"><h2>${esc(pick(r,'fileName','FileName') || 'Review memo')}</h2><p class="memo-status muted">Loading status…</p><div class="memo-actions"><button class="button secondary open-memo" type="button">Open memo</button></div><div class="memo-detail"></div></article>`).join('') : '<div class="empty-state">No review memos are available.</div>'; document.querySelectorAll('.open-memo').forEach(btn => btn.addEventListener('click', async () => { const card = btn.closest('[data-memo-id]'); btn.disabled = true; btn.textContent = 'Loading…'; try { const memo = await api(`/api/ReviewMemos/${card.dataset.memoId}`); btn.classList.add('is-hidden'); const status = approvalStatus(pick(memo,'approvalStatus','ApprovalStatus')); const detail = card.querySelector('.memo-detail'); card.querySelector('.memo-status').textContent = status; const content = pick(memo,'content','Content') || ''; const id = card.dataset.memoId; const exportButton = '<button class="button secondary export-memo" type="button">Export DOCX</button>'; if (status === 'Approved') { detail.innerHTML = `<div class="memo-content memo-preview">${memoHtml(content)}</div><div class="memo-actions">${exportButton}</div>`; detail.querySelector('.export-memo').addEventListener('click', () => downloadMemo(id)); return; } if (status === 'Rejected') { detail.innerHTML = `<div class="refusal"><strong>Rejected</strong><p>${esc(pick(memo,'decisionComment','DecisionComment') || 'This memo was previously rejected.')}</p></div>`; return; } detail.innerHTML = `<div class="memo-content memo-preview">${memoHtml(content)}</div><textarea class="memo-editor is-hidden" rows="10">${esc(content)}</textarea><div class="memo-actions"><button class="button primary approve-memo" type="button">Approve</button><button class="button secondary edit-memo" type="button">Edit memo</button><button class="button danger-outline reject-memo" type="button">Reject</button></div>`; const decisionButtons = () => detail.querySelectorAll('.approve-memo,.edit-memo,.reject-memo').forEach(button => { button.disabled = true; button.classList.add('is-hidden'); }); const showApproved = revisedContent => { decisionButtons(); detail.querySelector('.memo-preview').innerHTML = memoHtml(revisedContent); detail.querySelector('.memo-preview').classList.remove('is-hidden'); detail.querySelector('.memo-editor').classList.add('is-hidden'); card.querySelector('.memo-status').textContent = 'Approved'; detail.querySelector('.memo-actions').insertAdjacentHTML('beforeend', exportButton); detail.querySelector('.export-memo').addEventListener('click', () => downloadMemo(id)); }; detail.querySelector('.approve-memo').addEventListener('click', async event => { const button = event.currentTarget; button.disabled = true; button.textContent = 'Approving…'; try { const updated = await api(`/api/ReviewMemos/${id}/approve`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({counselName:state.user.displayName,comment:''})}); showApproved(pick(updated,'content','Content') || content); notify('Memo approved. Export is now available.'); } catch (error) { button.disabled = false; button.textContent = 'Approve'; notify(error.message); } }); detail.querySelector('.edit-memo').addEventListener('click', async event => { const button = event.currentTarget; const textarea = detail.querySelector('.memo-editor'); const preview = detail.querySelector('.memo-preview'); if (textarea.classList.contains('is-hidden')) { textarea.classList.remove('is-hidden'); preview.classList.add('is-hidden'); button.textContent = 'Save edits and approve'; return; } button.disabled = true; button.textContent = 'Saving…'; try { const updated = await api(`/api/ReviewMemos/${id}/edit-and-approve`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({counselName:state.user.displayName,revisedContent:textarea.value,comment:''})}); showApproved(pick(updated,'content','Content') || textarea.value); notify('Edited memo approved. The exported DOCX will contain this revised version.'); } catch (error) { button.disabled = false; button.textContent = 'Save edits and approve'; notify(error.message); } }); detail.querySelector('.reject-memo').addEventListener('click', async event => { const comment = window.prompt('Why is this memo rejected?'); if (!comment) return; const button = event.currentTarget; button.disabled = true; button.textContent = 'Rejecting…'; try { await api(`/api/ReviewMemos/${id}/reject`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({counselName:state.user.displayName,comment})}); notify('Memo rejected and removed from the queue.'); card.remove(); if (!$('approval-list').querySelector('[data-memo-id]')) $('approval-list').innerHTML = '<div class="empty-state">No review memos are available.</div>'; } catch (error) { button.disabled = false; button.textContent = 'Reject'; notify(error.message); } }); } catch (e) { card.querySelector('.memo-detail').textContent = e.message; btn.disabled = false; btn.textContent = 'Open memo'; } })); } catch (e) { $('approval-list').innerHTML = `<div class="refusal">${esc(e.message)}</div>`; } }
+  async function downloadMemo(id) { try { const response = await fetch(`/api/ReviewMemos/${id}/export/docx`, {credentials:'include', cache:'no-store'}); if (!response.ok) throw new Error('Export is available only after approval.'); const blob = await response.blob(); const disposition = response.headers.get('content-disposition') || ''; const match = disposition.match(/filename\*?=(?:UTF-8''|\")?([^;\"]+)/i); const fileName = match?.[1] ? decodeURIComponent(match[1].replace(/\"/g, '')) : `review-memo-${id}.docx`; const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = fileName; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1_000); } catch (e) { notify(e.message); } }
+  async function init() { wireAuth(); wireDropzone(); document.querySelectorAll('[data-view]').forEach(e => e.addEventListener('click', () => openView(e.dataset.view))); $('upload-form').addEventListener('submit', upload); $('ask-form').addEventListener('submit', ask); $('cancel-answer').addEventListener('click', () => state.answerAbort?.abort()); $('run-review').addEventListener('click', runReview); $('cancel-review').addEventListener('click', cancelReview); $('open-ask-button').addEventListener('click', () => openView('ask')); $('refresh-history').addEventListener('click', loadHistory); $('health-button').addEventListener('click', async () => { try { await api('/health/ready'); notify('API is ready'); } catch (e) { notify(`API unavailable: ${e.message}`); } }); renderDocument(); try { state.user = await api('/api/Auth/me'); showApp(); } catch { showAuth(); } }
+  document.addEventListener('DOMContentLoaded', init);
 })();
