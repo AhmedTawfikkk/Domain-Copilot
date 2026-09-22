@@ -1,0 +1,18 @@
+# --- .NET build artifacts (regenerate in-container; keep out to avoid
+# --- shipping Windows paths from local obj/ into the Linux image) ---
+**/bin/
+**/obj/
+
+# --- local tooling and secrets ---
+.git/
+.gitignore
+.vs/
+.env
+*.suo
+*.user
+*.userprefs
+
+# --- runtime-only data (uploaded through the UI; not part of the image) ---
+corpus/
+.tmp-docx-review/
+.tmp/
