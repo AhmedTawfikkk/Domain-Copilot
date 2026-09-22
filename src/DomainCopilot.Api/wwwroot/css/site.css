@@ -1,5 +1,5 @@
 /* =========================================================
-   Domain Copilot ï¿½ "Statute" visual system
+   Domain Copilot — "Statute" visual system
    Same structure/selectors as before. Visuals only.
    ========================================================= */
 
@@ -987,7 +987,7 @@ input, textarea, select {
 }
 
 /* =========================================================
-   Ask documents ï¿½ chat surface
+   Ask documents — chat surface
    ========================================================= */
 .ask-heading {
     align-items: center;
@@ -1233,3 +1233,123 @@ input, textarea, select {
     }
 }
 
+/* =========================================================
+   Legal review — canvas backdrop + progress
+   ========================================================= */
+.review-view {
+    position: relative;
+    padding-bottom: 2rem
+}
+
+.review-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0
+}
+
+.review-view > .page-heading, .review-card {
+    position: relative;
+    z-index: 1
+}
+
+#view-review:not(.is-hidden) {
+    animation: review-in .5s cubic-bezier(.22,.61,.36,1) both
+}
+
+@keyframes review-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px)
+    }
+
+    to {
+        opacity: 1;
+        transform: none
+    }
+}
+
+.review-view .page-heading {
+    margin-bottom: 2.2rem
+}
+
+.review-card {
+    padding: 2rem 2rem 1.8rem
+}
+
+.review-view #review-document {
+    padding: 1rem 1.15rem;
+    margin-bottom: 1.6rem;
+    border-radius: var(--radius-sm)
+}
+
+.review-actions {
+    display: flex;
+    gap: .8rem;
+    flex-wrap: wrap
+}
+
+    .review-actions .button {
+        margin-left: 0
+    }
+
+.review-view .progress-steps {
+    gap: .9rem;
+    margin: 1.8rem 0 1.6rem
+}
+
+.review-view .progress-step {
+    padding: .85rem 1.05rem;
+    gap: .9rem
+}
+
+    .review-view .progress-step.active span {
+        animation: step-pulse 1.7s ease-in-out infinite
+    }
+
+@keyframes step-pulse {
+    0%,100% {
+        box-shadow: 0 0 0 0 rgba(62,111,224,.35)
+    }
+
+    50% {
+        box-shadow: 0 0 0 6px rgba(62,111,224,0)
+    }
+}
+
+#review-overall-status {
+    margin: 1.2rem 0 .4rem
+}
+
+.review-view .memo-card, .review-view .risk-card {
+    margin-top: 1.4rem;
+    padding: 1.2rem 1.35rem
+}
+
+.review-view .risk-card {
+    margin-bottom: .6rem;
+    border-left: 3px solid var(--gold)
+}
+
+.memo-card h2 {
+    font-family: var(--font-display);
+    font-weight: 600
+}
+
+.memo-content h3, .memo-content h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    margin: 1rem 0 .4rem
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #view-review:not(.is-hidden) {
+        animation: none
+    }
+
+    .review-view .progress-step.active span {
+        animation: none
+    }
+}
