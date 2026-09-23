@@ -113,7 +113,13 @@ Follow this numbered script with the app open at `http://localhost:8080`.
 
 ## Environment variables
 
-All values are optional except where noted. The API loads `.env` from the repository root when it exists (and via `env_file` in Docker Compose).
+All values are optional except where noted. **There are two `.env` files:**
+the repository-root `.env` (loaded via `env_file` in Docker Compose — the
+supported quick start), and `src/DomainCopilot.Api/.env` (loaded by the
+`dotnet run` dev profile via `DotNetEnv`). Keep the LLM settings
+(`LLM_PROVIDER` / `LLM_API_KEY`) in sync in both; a stale root `.env` makes
+the Docker stack fall back to a dead provider while the dev profile still
+works.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -234,7 +240,8 @@ Documentation index:
 | Container is `(unhealthy)` | PostgreSQL is still starting; wait, then `docker compose ps`. Check `docker compose logs postgres` |
 | `connection refused` on port 5432 | Postgres container not up — `docker compose up -d postgres` |
 | Auth cookie not persisted | The session cookie follows the request scheme (`SameAsRequest`): it is `Secure` over HTTPS (local dev, TLS-terminated deploys) and plain over HTTP — the Docker path at `http://localhost:8080` is tested end-to-end. If you terminate TLS in front of the Docker port, cookies become `Secure` automatically (no config change) |
-| Ollama calls time out | Start Ollama (`ollama serve`) and `ollama pull llama3.1:8b nomic-embed-text`; confirm `http://localhost:11434` is reachable from the container/host |
+| Ollama calls time out | Start Ollama (`ollama serve`) and `ollama pull llama3.1:8b nomic-embed-text`; confirm `http://localhost:11434` is reachable from the container/host. Note: the default compose stack has **no** Ollama host mapping — Ollama as a provider requires the dev profile or adding a compose section for the host |
+| LLM chain silently dead in Docker while dev works | A stale repository-root `.env` can keep `LLM_PROVIDER`/`LLM_API_KEY` of a different provider than `src/DomainCopilot.Api/.env`. Point both files at the same provider/API key, then recreate the API container (`docker compose up -d --force-recreate api`) |
 | `Unable to find ... tesseract` on Windows | Install Tesseract + Poppler bin and set `PdfOcr__*` paths in `.env`, or use the Docker image (both preinstalled) |
 | Registration fails | Password must be ≥12 chars with upper, lower, digit, and symbol |
 | API returns 429 | You hit a rate-limit window (10/min for LLM-backed ops); wait a minute |
