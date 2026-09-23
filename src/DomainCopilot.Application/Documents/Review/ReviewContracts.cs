@@ -319,9 +319,24 @@ namespace DomainCopilot.Application.Documents.Review
         DateTime StartedAtUtc,
         DateTime? CompletedAtUtc);
 
+    public sealed record LlmCallTrace(
+        string Provider,
+        string Model,
+        string Operation,
+        int? InputTokens,
+        int? OutputTokens,
+        int? TotalTokens,
+        decimal? EstimatedCostUsd,
+        bool Succeeded,
+        bool WasCancelled,
+        string? FailureReason,
+        long DurationMilliseconds,
+        DateTime CreatedAtUtc);
+
     public sealed record ReviewRunTrace(
         ReviewRunSummary Run,
-        IReadOnlyList<ReviewAgentStepTrace> Steps);
+        IReadOnlyList<ReviewAgentStepTrace> Steps,
+        IReadOnlyList<LlmCallTrace> LlmCalls);
 
     public interface IReviewRunRepository
     {
@@ -329,6 +344,10 @@ namespace DomainCopilot.Application.Documents.Review
         Task AddStepAsync(ReviewAgentStep step, CancellationToken cancellationToken = default);
         Task<ReviewRun?> GetAsync(Guid runId, CancellationToken cancellationToken = default);
         Task<ReviewRunTrace?> GetTraceAsync(Guid runId, CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<LlmCallTrace>> GetLlmCallsAsync(
+            string? correlationId,
+            int limit,
+            CancellationToken cancellationToken = default);
         Task<IReadOnlyList<ReviewRunSummary>> ListAsync(CancellationToken cancellationToken = default);
         Task SaveChangesAsync(CancellationToken cancellationToken = default);
     }

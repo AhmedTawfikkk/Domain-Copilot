@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="Domain Copilot legal review workspace.">
+    <title>Domain Copilot</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/site.css">
+</head>
+<body>
+    <main id="auth-screen" class="auth-screen">
+        <div class="auth-layout">
+            <aside class="auth-panel" aria-hidden="true">
+                <div class="auth-panel-inner">
+                    <div class="brand auth-brand"><span class="brand-mark">DC</span><span>Domain <strong>Copilot</strong></span></div>
+                    <h2 class="auth-panel-heading">Every answer traces back to the page it came from.</h2>
+                    <p class="auth-panel-copy">Domain Copilot reads your agreements, then answers and reviews with citations you can open and verify — nothing asserted without a source.</p>
+                    <ul class="auth-panel-list">
+                        <li><span>01</span><div><strong>Upload</strong><small>PDF, DOCX, or TXT — OCR handles scanned pages</small></div></li>
+                        <li><span>02</span><div><strong>Ask or review</strong><small>Grounded answers and clause-by-clause risk findings</small></div></li>
+                        <li><span>03</span><div><strong>Approve</strong><small>Counsel signs off before a memo leaves the workspace</small></div></li>
+                    </ul>
+                </div>
+            </aside>
+            <section class="auth-form-panel">
+                <div class="auth-card" aria-labelledby="auth-title">
+                    <div class="brand auth-brand auth-brand-mobile"><span class="brand-mark">DC</span><span>Domain <strong>Copilot</strong></span></div>
+                    <p class="eyebrow">Legal evidence workspace</p>
+                    <h1 id="auth-title">Work with contracts, confidently.</h1>
+                    <p class="muted">Upload agreements, ask grounded questions, and move approved reviews forward.</p>
+                    <div class="auth-form-box">
+                        <div class="auth-tabs" role="tablist"><button class="tab is-active" type="button" data-auth-tab="login">Sign in</button><button class="tab" type="button" data-auth-tab="register">Create account</button></div>
+                        <form id="login-form" class="auth-form">
+                            <label>Email<span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></svg><input name="email" type="email" autocomplete="email" required></span></label>
+                            <label>Password<span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg><input name="password" type="password" autocomplete="current-password" required></span></label>
+                            <button class="button primary full" type="submit">Sign in</button>
+                        </form>
+                        <form id="register-form" class="auth-form is-hidden">
+                            <label>Display name<span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.4" /><path d="M5 20c0-3.6 3-6 7-6s7 2.4 7 6" /></svg><input name="displayName" autocomplete="name" required></span></label>
+                            <label>Email<span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></svg><input name="email" type="email" autocomplete="email" required></span></label>
+                            <label>Password<span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg><input name="password" type="password" minlength="8" autocomplete="new-password" required></span></label>
+                            <label>Role<span class="input-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3h8l1 4H7l1-4Z" /><rect x="5" y="7" width="14" height="14" rx="2" /><path d="M9 12h6M9 16h4" /></svg><select name="role"><option value="Lawyer">Lawyer</option><option value="Counsel">Counsel</option></select></span></label>
+                            <button class="button primary full" type="submit">Create account</button>
+                        </form>
+                        <p id="auth-error" class="form-error" role="alert"></p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+    <div id="app-screen" class="is-hidden">
+        <header class="topbar"><a class="brand" href="#"><span class="brand-mark">DC</span><span>Domain <strong>Copilot</strong></span></a><div class="topbar-user"><span id="user-name"></span><span id="user-role" class="role-badge"></span><button id="logout-button" class="button ghost" type="button">Sign out</button></div></header>
+        <div class="app-shell">
+            <aside class="sidebar" aria-label="Workspace navigation"><nav class="nav-list"><button class="nav-item is-active lawyer-only" data-view="workspace" type="button">⌂ <span>Contracts</span></button><button class="nav-item lawyer-only" data-view="ask" type="button">✦ <span>Ask documents</span></button><button class="nav-item lawyer-only" data-view="review" type="button">✓ <span>Legal review</span></button><button class="nav-item counsel-only" data-view="approval" type="button">▣ <span>Approval desk</span></button><button class="nav-item" data-view="history" type="button">◷ <span>Run history</span></button></nav><div class="sidebar-note"><strong>Evidence first</strong><span>Answers and review findings always link back to source text.</span></div></aside>
+            <section class="content" id="main-content">
+                <div id="toast" class="toast" role="status"></div>
+                <section id="view-workspace" class="view"><div class="page-heading"><div><p class="eyebrow">Document workspace</p><h1>Prepare your legal evidence</h1><p class="muted">Upload a contract, then ask questions or run a review.</p></div></div><div class="grid two"><article class="card"><div class="card-heading"><div><h2>Upload a contract</h2><p class="muted">PDF, DOCX, or TXT</p></div></div><form id="upload-form"><label class="dropzone" for="document-file"><span class="drop-icon">↑</span><strong>Choose a document</strong><span id="selected-file">or drop it here</span><input id="document-file" name="file" type="file" accept=".pdf,.docx,.txt" required></label><label>Source label <span class="optional">optional</span><input name="source" placeholder="e.g. Client upload"></label><button class="button primary" type="submit">Upload and prepare</button></form><div id="upload-status" class="status-box"></div></article><article class="card"><div class="card-heading"><div><h2>Current document</h2><p class="muted">The document selected for questions and review.</p></div></div><div id="current-document" class="empty-state">No document uploaded in this session.</div><button id="open-ask-button" class="button secondary" type="button">Ask about this document</button></article></div><article class="card activity-card"><div class="card-heading"><div><h2>What happens next</h2><p class="muted">Your document is prepared for grounded answers.</p></div></div><div class="workflow"><div><span>1</span><strong>Read</strong><small>Text and OCR extraction</small></div><div><span>2</span><strong>Prepare</strong><small>Chunks and source references</small></div><div><span>3</span><strong>Review</strong><small>Questions or legal review</small></div></div></article></section>
+                <section id="view-ask" class="view is-hidden ask-view"><div class="page-heading ask-heading"><div><p class="eyebrow">Evidence assistant</p><h1>Ask your contracts</h1><p class="muted">Ask a precise question and receive an answer grounded in the documents available to your workspace.</p></div><div class="ask-trust-badge"><span class="trust-dot"></span><span>Source-backed answers</span></div></div><article class="card ask-chat"><div id="answer-output" class="answer-output empty-state">Your answer will appear here.</div><form id="ask-form"><textarea id="question-input" rows="1" required placeholder="Ask anything about the contract…" aria-label="Your question"></textarea><button id="cancel-answer" class="chat-cancel is-hidden" type="button">Stop</button><button class="chat-send" type="submit" aria-label="Send question"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg></button></form></article></section>
+                <section id="view-review" class="view is-hidden review-view"><canvas id="review-canvas" class="review-bg" aria-hidden="true"></canvas><div class="page-heading"><div><p class="eyebrow">Legal review</p><h1>Review this agreement</h1><p class="muted">Run the clause extractor, risk assessor, and memo drafter.</p></div></div><article class="card review-card"><div id="review-document" class="selected-document">No document selected.</div><div class="review-actions"><button id="run-review" class="button primary" type="button">Run legal review</button><button id="cancel-review" class="button danger-outline is-hidden" type="button">Cancel review</button></div><div id="review-progress" class="progress-steps"></div><p id="review-overall-status" class="review-overall-status is-hidden" role="status"></p><div id="review-result"></div></article></section>
+                <section id="view-approval" class="view is-hidden"><div class="page-heading"><div><p class="eyebrow">Counsel workspace</p><h1>Approval desk</h1><p class="muted">Inspect review memos and approve only evidence-backed work.</p></div></div><div id="approval-list" class="stack"><div class="empty-state">Loading review memos…</div></div></section>
+                <section id="view-history" class="view is-hidden"><div class="page-heading"><div><p class="eyebrow">Trace and history</p><h1>Review runs</h1><p class="muted">Persistent status, agents, citations, and provider telemetry.</p></div><button id="refresh-history" class="button secondary" type="button">Refresh</button></div><div class="history-layout"><div id="history-list" class="stack"><div class="empty-state">Loading history…</div></div><article id="trace-panel" class="card trace-panel"><div class="empty-state">Select a run to inspect its trace.</div></article></div></section>
+            </section>
+        </div>
+    </div>
+    <script src="/js/app.js" defer></script>
+    <script>
+        (() => {
+            const canvas = document.getElementById('review-canvas');
+            const view = document.getElementById('view-review');
+            if (!canvas || !view || !canvas.getContext) return;
+            const ctx = canvas.getContext('2d');
+            const dpr = () => Math.max(1, window.devicePixelRatio || 1);
+            const reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            const ICONS = {
+                scales: [['M', -7, 11], ['L', 7, 11], ['M', 0, 11], ['L', 0, -11], ['M', -9, -9], ['L', 9, -9], ['M', -9, -9], ['L', -11, 1], ['M', 9, -9], ['L', 11, 1], ['M', -13, 1], ['Q', -7, 6, -1, 1], ['M', 1, 1], ['Q', 7, 6, 13, 1]],
+                gavel: [['M', -10, -4], ['L', 10, -4], ['L', 10, 2], ['L', -10, 2], ['Z'], ['M', -4, 2], ['L', -4, 13], ['M', -11, 13], ['L', 5, 13]],
+                doc: [['M', -9, -12], ['L', 9, -12], ['L', 9, 12], ['L', -9, 12], ['Z'], ['M', -9, -12], ['L', 1, -12], ['L', 9, -4], ['L', 9, 12], ['M', -5, -5], ['L', 5, -5], ['M', -5, -1], ['L', 5, -1], ['M', -5, 3], ['L', 5, 3]],
+                brief: [['M', -12, 3], ['L', 12, 3], ['L', 12, 13], ['L', -12, 13], ['Z'], ['M', -5, 3], ['L', -5, -1], ['M', 5, 3], ['L', 5, -1], ['M', -5, -1], ['L', 5, -1], ['M', -1.5, 3], ['L', -1.5, 13]],
+                pillars: [['M', -12, -12], ['L', -7, -12], ['L', -7, 12], ['L', -12, 12], ['Z'], ['M', 7, -12], ['L', 12, -12], ['L', 12, 12], ['L', 7, 12], ['Z'], ['M', -15, 12], ['L', 15, 12], ['M', -14, -13], ['L', 14, -13], ['M', -11, -10], ['L', -8, -10], ['M', -11, -6], ['L', -8, -6], ['M', -11, -2], ['L', -8, -2], ['M', -11, 2], ['L', -8, 2], ['M', -11, 6], ['L', -8, 6], ['M', 8, -10], ['L', 11, -10], ['M', 8, -6], ['L', 11, -6], ['M', 8, -2], ['L', 11, -2], ['M', 8, 2], ['L', 11, 2], ['M', 8, 6], ['L', 11, 6]]
+            };
+            const TYPES = Object.keys(ICONS).concat('para');
+            const COLORS = ['#4A7FE8', '#C9A227', '#5C6B85', '#7FA0EE'];
+
+            let icons = [];
+            function safeMod(v, m) { return ((v % m) + m) % m; }
+            function spawn(W, H) {
+                const n = Math.max(8, Math.min(30, Math.round((W * H) / 70000)));
+                icons = Array.from({ length: n }, () => ({
+                    type: TYPES[(Math.random() * TYPES.length) | 0],
+                    color: COLORS[(Math.random() * COLORS.length) | 0],
+                    x: Math.random() * W,
+                    alpha: .07 + Math.random() * .11,
+                    s: 26 + Math.random() * 20,
+                    amp: 6 + Math.random() * 16,
+                    sway: 8 + Math.random() * 22,
+                    speed: .18 + Math.random() * .3,
+                    phase: Math.random() * Math.PI * 2,
+                    rot: (Math.random() - .5) * .28,
+                    v: .04 + Math.random() * .1
+                }));
+            }
+            function trace(d) {
+                ctx.beginPath();
+                for (const op of d) {
+                    if (op[0] === 'M') ctx.moveTo(op[1], op[2]);
+                    else if (op[0] === 'L') ctx.lineTo(op[1], op[2]);
+                    else if (op[0] === 'Q') ctx.quadraticCurveTo(op[1], op[2], op[3], op[4]);
+                    else if (op[0] === 'Z') ctx.closePath();
+                }
+            }
+            function drawIcon(ic, x, y) {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(ic.rot);
+                ctx.scale(ic.s / 26, ic.s / 26);
+                ctx.lineWidth = 1.15;
+                ctx.lineJoin = 'round';
+                ctx.lineCap = 'round';
+                if (ic.type === 'para') {
+                    ctx.fillStyle = ic.color;
+                    ctx.globalAlpha = ic.alpha * 1.5;
+                    ctx.font = '700 15px Georgia, "Times New Roman", serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('§', 0, 0);
+                } else {
+                    trace(ICONS[ic.type]);
+                    ctx.globalAlpha = ic.alpha;
+                    ctx.strokeStyle = ic.color;
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+            function resize() {
+                const w = canvas.clientWidth, h = canvas.clientHeight;
+                if (!w || !h) return;
+                const scale = dpr();
+                canvas.width = Math.round(w * scale);
+                canvas.height = Math.round(h * scale);
+                ctx.setTransform(scale, 0, 0, scale, 0, 0);
+                spawn(w, h);
+            }
+            if (reduced) {
+                resize();
+                for (const ic of icons) drawIcon(ic, ic.x, ic.y);
+            } else {
+                function frame(ts) {
+                    requestAnimationFrame(frame);
+                    if (getComputedStyle(view).display === 'none') return;
+                    const w = canvas.clientWidth, h = canvas.clientHeight;
+                    if (!w || !h) return;
+                    if (canvas.width !== Math.round(w * dpr()) || canvas.height !== Math.round(h * dpr())) resize();
+                    const t = ts / 1000;
+                    ctx.clearRect(0, 0, w, h);
+                    for (const ic of icons) {
+                        const rise = safeMod(t * ic.v * 40 + ic.phase * 40, h + 90);
+                        const y = h + 45 - rise + Math.sin(t * ic.speed + ic.phase) * ic.amp;
+                        const x = safeMod(ic.x + Math.cos(t * ic.speed * .6 + ic.phase) * ic.sway, w + 80) - 40;
+                        drawIcon(ic, x, y);
+                    }
+                }
+                requestAnimationFrame(frame);
+            }
+            window.addEventListener('resize', resize);
+        })();
+    </script>
+</body>
+</html>

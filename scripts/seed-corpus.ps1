@@ -65,7 +65,7 @@ if (-not $loginResponse.IsSuccessStatusCode) {
     $loginBody = $loginResponse.Content.ReadAsStringAsync().GetAwaiter().GetResult()
     $loginStatusCode = [int]$loginResponse.StatusCode
     $loginResponse.Dispose()
-    throw "Login failed. HTTP $loginStatusCode: $loginBody"
+    throw "Login failed. HTTP ${loginStatusCode}: $loginBody"
 }
 
 $loginResponse.Dispose()

@@ -60,7 +60,40 @@ while allowing document chunk IDs to remain database-generated.
    notes. Do not compare chunk IDs between database resets; compare case IDs
    and metrics instead.
 
-## Recorded Day 11 run
+## Recorded run — 2026-09-23 (re-run on the Docker quick-start stack)
+
+Re-run after the Docker quick-start path was fixed (`.dockerignore` + cookie
+policy) and cleared the environment's stale LLM configuration (see the note
+below about the two `.env` files). **Provider: Gemini**
+(`LLM_PROVIDER=gemini`); models recorded in `LlmRequestTelemetry`:
+`gemini-3.5-flash-lite` (completions) and `gemini-embedding-001`
+(embeddings). Corpus at run time: 50 documents / 578 chunks in the Docker
+database. Executed as `Counsel` via `POST /api/Evaluation/run` on
+`http://localhost:8080`.
+
+| Metric | Result |
+|---|---:|
+| Total / completed cases | 25 / 25 |
+| Failed cases | 0 |
+| Outcome match rate | 25 / 25 (100.00%) |
+| Answer hit rate | 13 / 13 (100.00%) |
+| Groundedness rate | 14 / 14 (100.00%) |
+| Refusal correctness rate | 8 / 8 (100.00%) |
+| Prompt-injection resistance rate | 6 / 6 (100.00%) |
+
+Raw result (`metrics`): `totalCases=25, completedCases=25, failedCases=0,
+outcomeMatchRate=1, answerHitRate=1, groundednessRate=1,
+refusalCorrectnessRate=1, promptInjectionResistanceRate=1`.
+
+Reproducibility note: the database was shared with prior dev-profile sessions
+(dev and Docker both use the compose Postgres on `localhost:5432`), so the
+synthetic corpus was already partially indexed; the run above covers the
+current indexed state and yields the same 100 % figures as the development-run
+below. Re-running against a fresh database requires re-seeding the corpus
+first (`scripts/seed-corpus.ps1`, which is rate-limited to 10 ingests/minute —
+seed in ≤10-file batches).
+
+### Recorded Day 11 run (historical — first completed development run)
 
 The first completed Day 11 run against the indexed synthetic corpus produced:
 
@@ -85,6 +118,15 @@ following the malicious text embedded in the document.
   single named contract can retrieve evidence from several agreements and
   correctly be refused as ambiguous.
 - Evaluation uses the active configured provider, so quality metrics may vary
-  between providers and model versions.
+  between providers and model versions. (The 2026-09-23 recorded run used
+  Gemini: `gemini-3.5-flash-lite` completions + `gemini-embedding-001`
+  embeddings, per `LlmRequestTelemetry`.)
+- The ingest endpoint tolerates embedding failures silently: during the earlier
+  sessions the corpus ended up with 361 of 578 chunks carrying embeddings and
+  documents were still marked stored. Re-uploading a duplicate returns 409 and
+  does not rebuild the missing embeddings (a distinct re-upload is required).
+  The recorded runs held 100 % anyway (hybrid retrieval still finds chunks via
+  full-text), but a no-warning partial index is a real risk worth fixing in the
+  ingest pipeline (fail or warn when a batch yields zero embeddings).
 - The harness evaluates structural grounding and expected clause coverage. It
   does not replace qualified human legal review of substantive correctness.

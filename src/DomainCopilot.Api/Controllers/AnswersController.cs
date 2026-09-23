@@ -14,13 +14,16 @@ public sealed class AnswersController : ControllerBase
 {
     private readonly IGroundedAnswerService _groundedAnswerService;
     private readonly IStreamingGroundedAnswerService _streamingGroundedAnswerService;
+    private readonly ILogger<AnswersController> _logger;
 
     public AnswersController(
         IGroundedAnswerService groundedAnswerService,
-        IStreamingGroundedAnswerService streamingGroundedAnswerService)
+        IStreamingGroundedAnswerService streamingGroundedAnswerService,
+        ILogger<AnswersController> logger)
     {
         _groundedAnswerService = groundedAnswerService;
         _streamingGroundedAnswerService = streamingGroundedAnswerService;
+        _logger = logger;
     }
 
     [HttpPost]
@@ -48,6 +51,14 @@ public sealed class AnswersController : ControllerBase
             return StatusCode(
                 StatusCodes.Status503ServiceUnavailable,
                 new { error = exception.Message });
+        }
+        catch (HttpRequestException exception)
+        {
+            _logger.LogWarning(exception, "Answer failed due to an LLM provider error.");
+
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                new { error = "The AI provider is temporarily unavailable. Please try again." });
         }
     }
 
@@ -98,6 +109,11 @@ public sealed class AnswersController : ControllerBase
         catch (InvalidOperationException exception)
         {
             await WriteErrorAsync("unavailable", exception.Message, cancellationToken);
+        }
+        catch (HttpRequestException exception)
+        {
+            _logger.LogWarning(exception, "Answer stream failed due to an LLM provider error.");
+            await WriteErrorAsync("unavailable", "The AI provider is temporarily unavailable. Please try again.", cancellationToken);
         }
     }
 
