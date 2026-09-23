@@ -252,7 +252,7 @@ Documentation index:
 
 ## Docs, demos, and evaluation
 
-- Product demo and teaching videos (unlisted) … *links live here once published.*
+- **شرح الفيديوهات / Tutorial videos** — an unlisted Google Drive folder with the product demo and teaching walkthroughs: [Domain Copilot — explanation videos](https://drive.google.com/drive/folders/1gPAw2qaiU8z7ewf7bqRo0jHVChJ3Aa5s?usp=drive_link).
 - Live deployment … *see the deployment section of `docs/SYSTEM-DESIGN.md` for the free-tier target and the CI/CD notes.*
 
 **License:** not yet licensed — see repository for notices.
