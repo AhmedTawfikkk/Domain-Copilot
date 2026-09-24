@@ -5,7 +5,8 @@ namespace DomainCopilot.Application.Documents.Ingestion
     public sealed record IngestDocumentCommand(
         string FileName,
         string Source,
-        Stream Content);
+        Stream Content,
+        Guid? OwnerId = null);
 
     public sealed record DocumentIngestionResult(
         Guid DocumentId,

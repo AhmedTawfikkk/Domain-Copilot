@@ -30,6 +30,7 @@ public sealed class StreamingGroundedAnswerService : IStreamingGroundedAnswerSer
 
     public async IAsyncEnumerable<GroundedAnswerStreamEvent> StreamAsync(
         AnswerRequest request,
+        Guid? ownerId = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -46,6 +47,7 @@ public sealed class StreamingGroundedAnswerService : IStreamingGroundedAnswerSer
             request.Question,
             request.RetrievalMode,
             request.RetrievalLimit,
+            ownerId,
             cancellationToken);
 
         if (retrievedChunks.Count == 0)

@@ -47,6 +47,7 @@ public sealed class EvaluationHarness : IEvaluationHarness
                     evaluationCase.Question,
                     evaluationCase.RetrievalMode,
                     evaluationCase.RetrievalLimit),
+                ownerId: null,
                 cancellationToken);
 
             var citationCount = answer.Citations.Count;

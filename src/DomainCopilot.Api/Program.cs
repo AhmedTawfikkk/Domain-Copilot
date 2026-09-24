@@ -2,6 +2,7 @@ using DomainCopilot.Api.Observability;
 using DomainCopilot.Api.Health;
 using DomainCopilot.Api.Security;
 using DomainCopilot.Application.Authentication;
+using DomainCopilot.Application.Documents.Access;
 using DomainCopilot.Application.Documents.Answering;
 using DomainCopilot.Application.Documents.Evaluation;
 using DomainCopilot.Application.Documents.Ingestion;
@@ -320,6 +321,9 @@ builder.Services.AddScoped<IDocumentIngestionService,
 
 builder.Services.AddScoped<IChunkRetrievalRepository,
     ChunkRetrievalRepository>();
+
+builder.Services.AddScoped<IDocumentOwnershipRepository,
+    DocumentOwnershipRepository>();
 
 builder.Services.AddScoped<IEmbeddingIndexingService,
     EmbeddingIndexingService>();

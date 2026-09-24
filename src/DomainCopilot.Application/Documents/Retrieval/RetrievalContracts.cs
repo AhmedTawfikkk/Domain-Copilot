@@ -46,11 +46,13 @@ namespace DomainCopilot.Application.Documents.Retrieval
         Task<IReadOnlyList<RetrievedChunk>> SearchDenseAsync(
             float[] queryEmbedding,
             int take,
+            Guid? ownerId = null,
             CancellationToken cancellationToken = default);
 
         Task<IReadOnlyList<RetrievedChunk>> SearchKeywordAsync(
             string query,
             int take,
+            Guid? ownerId = null,
             CancellationToken cancellationToken = default);
     }
 
@@ -67,6 +69,7 @@ namespace DomainCopilot.Application.Documents.Retrieval
             string query,
             RetreivalMode mode,
             int limit,
+            Guid? ownerId = null,
             CancellationToken cancellationToken = default);
     }
 

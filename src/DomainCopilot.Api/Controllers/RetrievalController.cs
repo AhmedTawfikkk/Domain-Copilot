@@ -30,10 +30,14 @@ namespace DomainCopilot.Api.Controllers
         {
             try
             {
+                // Questions search the whole prepared corpus (DB-wide) — the same
+                // behavior as before the owner-scoping work. Object-level ownership
+                // checks still apply to per-document/per-run endpoints.
                 var results = await _retrievalService.SearchAsync(
                     query,
                     mode,
                     limit,
+                    ownerId: null,
                     cancellationToken);
 
                 return Ok(results);

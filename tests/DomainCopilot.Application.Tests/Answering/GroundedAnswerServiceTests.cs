@@ -20,6 +20,7 @@ public class GroundedAnswerServiceTests
                 It.IsAny<string>(),
                 It.IsAny<RetreivalMode>(),
                 It.IsAny<int>(),
+                It.IsAny<Guid?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { chunk });
 
@@ -62,6 +63,7 @@ public class GroundedAnswerServiceTests
                 It.IsAny<string>(),
                 It.IsAny<RetreivalMode>(),
                 It.IsAny<int>(),
+                It.IsAny<Guid?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(Array.Empty<RetrievedChunk>());
 
@@ -99,6 +101,7 @@ public class GroundedAnswerServiceTests
                 It.IsAny<string>(),
                 It.IsAny<RetreivalMode>(),
                 It.IsAny<int>(),
+                It.IsAny<Guid?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { retrievedChunk });
 
@@ -142,6 +145,7 @@ public class GroundedAnswerServiceTests
                 It.IsAny<string>(),
                 It.IsAny<RetreivalMode>(),
                 It.IsAny<int>(),
+                It.IsAny<Guid?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[] { chunk });
 

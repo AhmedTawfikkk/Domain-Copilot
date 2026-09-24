@@ -1,29 +1,34 @@
 ﻿using DomainCopilot.Api.Security;
+using DomainCopilot.Application.Documents.Access;
 using DomainCopilot.Application.Documents.Review;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 
 namespace DomainCopilot.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[EnableRateLimiting("state-changing")]
 [Authorize(Policy = ApiAuthorizationPolicies.LawyerOrCounsel)]
 public sealed class ReviewMemosController : ControllerBase
 {
     private readonly IMemoApprovalService _memoApprovalService;
     private readonly IReviewMemoExportService _memoExportService;
+    private readonly IDocumentOwnershipRepository _ownershipRepository;
 
     public ReviewMemosController(
     IMemoApprovalService memoApprovalService,
-    IReviewMemoExportService memoExportService)
+    IReviewMemoExportService memoExportService,
+    IDocumentOwnershipRepository ownershipRepository)
     {
         _memoApprovalService = memoApprovalService;
         _memoExportService = memoExportService;
+        _ownershipRepository = ownershipRepository;
     }
 
     [HttpGet("{memoId:guid}")]
+    [EnableRateLimiting("retrieval")]
     public async Task<ActionResult<ReviewMemoDetails>> Get(
         Guid memoId,
         CancellationToken cancellationToken = default)
@@ -34,9 +39,17 @@ public sealed class ReviewMemosController : ControllerBase
                 memoId,
                 cancellationToken);
 
-            return memo is null
-                ? NotFound(new { error = "Review memo was not found." })
-                : Ok(memo);
+            if (memo is null)
+            {
+                return NotFound(new { error = "Review memo was not found." });
+            }
+
+            if (!await CanAccessMemoAsync(memo, cancellationToken))
+            {
+                return Forbid();
+            }
+
+            return Ok(memo);
         }
         catch (ArgumentException exception)
         {
@@ -45,6 +58,7 @@ public sealed class ReviewMemosController : ControllerBase
     }
 
     [HttpPost("{memoId:guid}/approve")]
+    [EnableRateLimiting("state-changing")]
     [Authorize(Policy = ApiAuthorizationPolicies.Counsel)]
     public Task<ActionResult<ReviewMemoDetails>> Approve(
         Guid memoId,
@@ -59,6 +73,7 @@ public sealed class ReviewMemosController : ControllerBase
     }
 
     [HttpPost("{memoId:guid}/reject")]
+    [EnableRateLimiting("state-changing")]
     [Authorize(Policy = ApiAuthorizationPolicies.Counsel)]
     public Task<ActionResult<ReviewMemoDetails>> Reject(
         Guid memoId,
@@ -73,6 +88,7 @@ public sealed class ReviewMemosController : ControllerBase
     }
 
     [HttpPost("{memoId:guid}/edit-and-approve")]
+    [EnableRateLimiting("state-changing")]
     [Authorize(Policy = ApiAuthorizationPolicies.Counsel)]
     public Task<ActionResult<ReviewMemoDetails>> EditAndApprove(
         Guid memoId,
@@ -86,13 +102,31 @@ public sealed class ReviewMemosController : ControllerBase
                 cancellationToken));
     }
     [HttpGet("{memoId:guid}/export/docx")]
-    [Authorize(Policy = ApiAuthorizationPolicies.Counsel)]
+    [EnableRateLimiting("retrieval")]
+    [Authorize(Policy = ApiAuthorizationPolicies.LawyerOrCounsel)]
     public async Task<IActionResult> ExportDocx(
     Guid memoId,
     CancellationToken cancellationToken = default)
     {
         try
         {
+            var memo = await _memoApprovalService.GetAsync(
+                memoId,
+                cancellationToken);
+
+            if (memo is null)
+            {
+                return NotFound(new
+                {
+                    error = "Review memo was not found."
+                });
+            }
+
+            if (!await CanAccessMemoAsync(memo, cancellationToken))
+            {
+                return Forbid();
+            }
+
             var export = await _memoExportService.ExportApprovedDocxAsync(
                 memoId,
                 cancellationToken);
@@ -124,6 +158,34 @@ public sealed class ReviewMemosController : ControllerBase
             });
         }
     }
+
+    private async Task<bool> CanAccessMemoAsync(
+        ReviewMemoDetails memo,
+        CancellationToken cancellationToken)
+    {
+        if (User.IsInRole(ApiRoles.Counsel))
+        {
+            return true;
+        }
+
+        var currentUserId = CurrentUserId();
+
+        if (currentUserId is null)
+        {
+            return false;
+        }
+
+        var ownerId = await _ownershipRepository.GetOwnerIdAsync(
+            memo.DocumentId,
+            cancellationToken);
+
+        return ownerId.HasValue && ownerId.Value == currentUserId.Value;
+    }
+
+    private Guid? CurrentUserId() =>
+        Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
+            ? userId
+            : null;
 
     private async Task<ActionResult<ReviewMemoDetails>>
         ExecuteDecisionAsync(

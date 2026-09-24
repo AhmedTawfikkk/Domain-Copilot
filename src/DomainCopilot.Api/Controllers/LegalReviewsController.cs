@@ -1,8 +1,10 @@
 ﻿using DomainCopilot.Api.Security;
+using DomainCopilot.Application.Documents.Access;
 using DomainCopilot.Application.Documents.Review;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 using System.Text.Json;
 
 namespace DomainCopilot.Api.Controllers;
@@ -14,13 +16,16 @@ public sealed class LegalReviewsController : ControllerBase
 {
     private readonly ILegalReviewOrchestrator _orchestrator;
     private readonly IStreamingLegalReviewService _streamingLegalReviewService;
+    private readonly IDocumentOwnershipRepository _ownershipRepository;
 
     public LegalReviewsController(
         ILegalReviewOrchestrator orchestrator,
-        IStreamingLegalReviewService streamingLegalReviewService)
+        IStreamingLegalReviewService streamingLegalReviewService,
+        IDocumentOwnershipRepository ownershipRepository)
     {
         _orchestrator = orchestrator;
         _streamingLegalReviewService = streamingLegalReviewService;
+        _ownershipRepository = ownershipRepository;
     }
 
     [HttpPost]
@@ -29,6 +34,11 @@ public sealed class LegalReviewsController : ControllerBase
         [FromBody] LegalReviewRequest request,
         CancellationToken cancellationToken = default)
     {
+        if (!await IsDocumentOwnerAsync(request.DocumentId, cancellationToken))
+        {
+            return Forbid();
+        }
+
         try
         {
             var result = await _orchestrator.ReviewAsync(
@@ -73,6 +83,17 @@ public sealed class LegalReviewsController : ControllerBase
         Response.Headers.CacheControl = "no-cache";
         Response.Headers.Append("X-Accel-Buffering", "no");
 
+        if (!await IsDocumentOwnerAsync(request.DocumentId, cancellationToken))
+        {
+            Response.StatusCode = StatusCodes.Status403Forbidden;
+            await WriteErrorAsync(
+                "forbidden",
+                "You do not have access to the document for this review request.",
+                cancellationToken);
+
+            return;
+        }
+
         try
         {
             var streamRequest = request with
@@ -100,6 +121,29 @@ public sealed class LegalReviewsController : ControllerBase
         {
             await WriteErrorAsync("unavailable", exception.Message, cancellationToken);
         }
+    }
+
+    private Guid? CurrentUserId() =>
+        Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
+            ? userId
+            : null;
+
+    private async Task<bool> IsDocumentOwnerAsync(
+        Guid documentId,
+        CancellationToken cancellationToken)
+    {
+        var currentUserId = CurrentUserId();
+
+        if (currentUserId is null)
+        {
+            return false;
+        }
+
+        var ownerId = await _ownershipRepository.GetOwnerIdAsync(
+            documentId,
+            cancellationToken);
+
+        return ownerId.HasValue && ownerId.Value == currentUserId.Value;
     }
 
     private static string ToEventName(LegalReviewProgressEventType type) => type switch

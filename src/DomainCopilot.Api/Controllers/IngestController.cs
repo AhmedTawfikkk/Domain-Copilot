@@ -4,6 +4,7 @@ using DomainCopilot.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 
 namespace DomainCopilot.Api.Controllers;
 
@@ -64,7 +65,12 @@ public class IngestController : ControllerBase
         }
 
         await using var stream = file.OpenReadStream();
-        var command = new IngestDocumentCommand(file.FileName, resolvedSource, stream);
+        var ownerId = Guid.TryParse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier),
+            out var parsedOwnerId)
+            ? parsedOwnerId
+            : (Guid?)null;
+        var command = new IngestDocumentCommand(file.FileName, resolvedSource, stream, ownerId);
 
         try
         {

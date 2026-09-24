@@ -27,6 +27,7 @@ namespace DomainCopilot.Application.Documents.Retrieval
             string query,
             RetreivalMode mode,
             int limit,
+            Guid? ownerId = null,
             CancellationToken cancellationToken = default)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(query);
@@ -43,16 +44,19 @@ namespace DomainCopilot.Application.Documents.Retrieval
                 RetreivalMode.Dense => await SearchDenseAsync(
                     query,
                     limit,
+                    ownerId,
                     cancellationToken),
 
                 RetreivalMode.Keyword => await _repository.SearchKeywordAsync(
                     query,
                     limit,
+                    ownerId,
                     cancellationToken),
 
                 RetreivalMode.Hybrid => await SearchHybridAsync(
                     query,
                     limit,
+                    ownerId,
                     cancellationToken),
 
                 _ => throw new ArgumentOutOfRangeException(nameof(mode))
@@ -62,6 +66,7 @@ namespace DomainCopilot.Application.Documents.Retrieval
         private async Task<IReadOnlyList<RetrievedChunk>> SearchDenseAsync(
             string query,
             int limit,
+            Guid? ownerId,
             CancellationToken cancellationToken)
         {
             var embedding = await _llmProvider.EmbedAsync(
@@ -71,12 +76,14 @@ namespace DomainCopilot.Application.Documents.Retrieval
             return await _repository.SearchDenseAsync(
                 embedding,
                 limit,
+                ownerId,
                 cancellationToken);
         }
 
         private async Task<IReadOnlyList<RetrievedChunk>> SearchHybridAsync(
             string query,
             int limit,
+            Guid? ownerId,
             CancellationToken cancellationToken)
         {
             var candidateCount = Math.Max(limit * 3, 20);
@@ -88,11 +95,13 @@ namespace DomainCopilot.Application.Documents.Retrieval
             var denseResults = await _repository.SearchDenseAsync(
       embedding,
       candidateCount,
+      ownerId,
       cancellationToken);
 
             var keywordResults = await _repository.SearchKeywordAsync(
                 query,
                 candidateCount,
+                ownerId,
                 cancellationToken);
 
             return FuseByReciprocalRank(

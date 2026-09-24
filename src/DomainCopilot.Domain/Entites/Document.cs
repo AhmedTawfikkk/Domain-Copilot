@@ -16,6 +16,7 @@ namespace DomainCopilot.Domain.Entites
         public string Version { get; set; } = "1.0";
         public string FileHash { get; set; } = string.Empty; 
         public DateTime UploadedAt { get; set; }
+        public Guid? OwnerId { get; set; }
         public DocumentStatus Status { get; set; } = DocumentStatus.Pending;
         public string? FailureReason { get; set; }
         public ICollection<DocumentChunk> Chunks { get; set; } = new List<DocumentChunk>();

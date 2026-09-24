@@ -25,7 +25,9 @@ public class DocumentConfiguration : IEntityTypeConfiguration<Document>
             .HasConversion<string>()
             .HasMaxLength(20);
 
-        builder.HasIndex(document => document.FileHash).IsUnique();
+        // The content hash is only unique per owner. Two different users may
+        // legitimately upload the same file, and each must own an isolated copy.
+        builder.HasIndex(document => new { document.FileHash, document.OwnerId }).IsUnique();
 
         builder.HasMany(document => document.Chunks)
             .WithOne(chunk => chunk.Document)
