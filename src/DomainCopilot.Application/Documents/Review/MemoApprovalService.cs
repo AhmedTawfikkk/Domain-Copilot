@@ -1,5 +1,6 @@
 ﻿using DomainCopilot.Domain.Entites;
 using DomainCopilot.Domain.Enums;
+using System.Linq;
 
 namespace DomainCopilot.Application.Documents.Review;
 
@@ -147,6 +148,17 @@ public sealed class MemoApprovalService : IMemoApprovalService
             memo.CreatedAtUtc,
             memo.DecidedAtUtc,
             memo.DecidedBy,
-            memo.DecisionComment);
+            memo.DecisionComment,
+            memo.Citations
+                .OrderBy(citation => citation.CitationOrder)
+                .Select(citation => new MemoCitationExportSource(
+                    citation.DocumentChunkId,
+                    citation.CitationOrder,
+                    citation.DocumentChunk?.Document?.FileName ?? string.Empty,
+                    citation.DocumentChunk?.ClauseOrSection,
+                    citation.DocumentChunk?.PageNumber,
+                    citation.DocumentChunk?.ExtractionConfidence ?? 1.0,
+                    citation.DocumentChunk?.LowConfidence ?? false))
+                .ToList());
     }
 }

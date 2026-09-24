@@ -168,5 +168,17 @@
             window.addEventListener('resize', resize);
         })();
     </script>
+    <div id="reject-modal" class="modal-overlay is-hidden" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="reject-modal-title">
+            <button id="reject-close" class="modal-close" type="button" aria-label="Close">✕</button>
+            <h2 id="reject-modal-title">Reject review memo</h2>
+            <p class="muted">Explain why this memo is being rejected — the reason is recorded with the decision.</p>
+            <textarea id="reject-comment" rows="4" placeholder="Reason for rejection…"></textarea>
+            <div class="modal-actions">
+                <button id="reject-cancel" class="button secondary" type="button">Cancel</button>
+                <button id="reject-confirm" class="button danger-outline" type="button">Confirm rejection</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

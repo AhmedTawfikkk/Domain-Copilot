@@ -1,5 +1,5 @@
 /* =========================================================
-   Domain Copilot — "Statute" visual system
+   Domain Copilot ï¿½ "Statute" visual system
    Same structure/selectors as before. Visuals only.
    ========================================================= */
 
@@ -745,6 +745,31 @@ input, textarea, select {
     font-weight: 600
 }
 
+.memo-sources .source-row {
+    display: block;
+    line-height: 1.45;
+    margin: .45rem 0 0
+}
+
+.memo-sources .low-conf {
+    color: var(--red);
+    font-weight: 700
+}
+
+.memo-sources .ocr-banner {
+    margin-bottom: .2rem
+}
+
+.memo-actions {
+    display: flex;
+    gap: .6rem;
+    margin-top: 1rem
+}
+
+.memo-actions .danger-outline {
+    margin-left: 0
+}
+
 .refusal {
     border-left: 3px solid var(--red);
     padding: .8rem 1rem;
@@ -987,7 +1012,7 @@ input, textarea, select {
 }
 
 /* =========================================================
-   Ask documents — chat surface
+   Ask documents ï¿½ chat surface
    ========================================================= */
 .ask-heading {
     align-items: center;
@@ -1234,7 +1259,7 @@ input, textarea, select {
 }
 
 /* =========================================================
-   Legal review — canvas backdrop + progress
+   Legal review ï¿½ canvas backdrop + progress
    ========================================================= */
 .review-view {
     position: relative;
@@ -1352,4 +1377,100 @@ input, textarea, select {
     .review-view .progress-step.active span {
         animation: none
     }
+}
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(16, 21, 31, .10);
+    padding: 1rem
+}
+
+.modal-overlay.is-hidden {
+    display: none
+}
+
+.modal-card {
+    position: relative;
+    width: min(340px, 100%);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(16, 21, 31, .14), 0 2px 6px rgba(16, 21, 31, .08);
+    padding: 1.05rem 1.1rem;
+    animation: modal-pop .16s ease-out
+}
+
+@keyframes modal-pop {
+    from {
+        transform: translateY(6px);
+        opacity: 0
+    }
+    to {
+        transform: none;
+        opacity: 1
+    }
+}
+
+.modal-card h2 {
+    margin: 0 0 2px;
+    font-family: var(--font-display);
+    font-size: .95rem
+}
+
+.modal-card p.muted {
+    margin: 0 0 .65rem;
+    font-size: .78rem;
+    line-height: 1.45
+}
+
+.modal-card textarea {
+    width: 100%;
+    min-height: 72px;
+    resize: vertical;
+    box-sizing: border-box;
+    font: inherit;
+    font-size: .84rem;
+    padding: .5rem .65rem;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface)
+}
+
+.modal-card textarea:focus {
+    outline: 2px solid var(--accent);
+    border-color: var(--accent)
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .5rem;
+    margin-top: .8rem
+}
+
+.modal-actions .button {
+    padding: .42rem .85rem;
+    font-size: .8rem
+}
+
+.modal-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    border: 0;
+    background: none;
+    color: var(--ink-soft);
+    font-size: .9rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px
+}
+
+.modal-close:hover {
+    color: var(--ink)
 }
