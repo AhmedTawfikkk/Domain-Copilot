@@ -34,8 +34,11 @@ public sealed class AnswersController : ControllerBase
     {
         try
         {
+            // Questions search the whole prepared corpus (DB-wide). Per-lawyer
+            // ownership (OWASP) applies to runs and per-document endpoints only.
             var result = await _groundedAnswerService.AnswerAsync(
                 request,
+                null,
                 cancellationToken);
 
             return result.Status == AnswerStatus.Refused
@@ -75,7 +78,7 @@ public sealed class AnswersController : ControllerBase
         try
         {
             await foreach (var streamEvent in _streamingGroundedAnswerService
-                               .StreamAsync(request, cancellationToken)
+                               .StreamAsync(request, null, cancellationToken)
                                .WithCancellation(cancellationToken))
             {
                 var eventName = streamEvent.Type switch

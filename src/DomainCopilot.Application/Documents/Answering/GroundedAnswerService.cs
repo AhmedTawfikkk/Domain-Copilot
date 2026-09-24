@@ -25,6 +25,7 @@ public sealed class GroundedAnswerService : IGroundedAnswerService
 
     public async Task<GroundedAnswerResult> AnswerAsync(
         AnswerRequest request,
+        Guid? ownerId = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -41,6 +42,7 @@ public sealed class GroundedAnswerService : IGroundedAnswerService
             request.Question,
             request.RetrievalMode,
             request.RetrievalLimit,
+            ownerId,
             cancellationToken);
 
         if (retrievedChunks.Count == 0)

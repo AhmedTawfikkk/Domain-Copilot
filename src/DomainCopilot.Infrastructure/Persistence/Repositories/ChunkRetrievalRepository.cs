@@ -94,31 +94,39 @@ namespace DomainCopilot.Infrastructure.Persistence.Repositories
         public async Task<IReadOnlyList<RetrievedChunk>> SearchDenseAsync(
             float[] queryEmbedding,
             int take,
+            Guid? ownerId = null,
             CancellationToken cancellationToken = default)
         {
             var queryVector = new Vector(queryEmbedding);
 
-            var results = await (
+            var query =
                 from embedding in _dbContext.DocumentChunkEmbeddings.AsNoTracking()
                 join chunk in _dbContext.DocumentChunks.AsNoTracking()
                     on embedding.DocumentChunkId equals chunk.Id
                 join document in _dbContext.Documents.AsNoTracking()
                     on chunk.DocumentId equals document.Id
-                orderby embedding.Embedding.CosineDistance(queryVector)
-                select new RetrievedChunk(
-                    chunk.Id,
-                    document.Id,
-                    document.FileName,
-                    document.Source,
-                    document.Version,
-                    chunk.Content,
-                    chunk.ClauseOrSection,
-                    chunk.PageNumber,
-                    chunk.LowConfidence,
-                    1d - embedding.Embedding.CosineDistance(queryVector))
-            )
-            .Take(take)
-            .ToListAsync(cancellationToken);
+                select new { embedding, chunk, document };
+
+            if (ownerId.HasValue)
+            {
+                query = query.Where(item => item.document.OwnerId == ownerId.Value);
+            }
+
+            var results = await query
+                .OrderBy(item => item.embedding.Embedding.CosineDistance(queryVector))
+                .Select(item => new RetrievedChunk(
+                    item.chunk.Id,
+                    item.document.Id,
+                    item.document.FileName,
+                    item.document.Source,
+                    item.document.Version,
+                    item.chunk.Content,
+                    item.chunk.ClauseOrSection,
+                    item.chunk.PageNumber,
+                    item.chunk.LowConfidence,
+                    1d - item.embedding.Embedding.CosineDistance(queryVector)))
+                .Take(take)
+                .ToListAsync(cancellationToken);
 
             return results;
         }
@@ -126,6 +134,7 @@ namespace DomainCopilot.Infrastructure.Persistence.Repositories
         public async Task<IReadOnlyList<RetrievedChunk>> SearchKeywordAsync(
         string query,
         int take,
+        Guid? ownerId = null,
         CancellationToken cancellationToken = default)
         {
             var connection = (NpgsqlConnection)_dbContext.Database.GetDbConnection();
@@ -142,11 +151,16 @@ namespace DomainCopilot.Infrastructure.Persistence.Repositories
             FROM "DocumentChunks" c
             JOIN "Documents" d ON d."Id" = c."DocumentId"
             WHERE c."SearchVector" @@ websearch_to_tsquery('english', @query)
+              AND (@ownerId IS NULL OR d."OwnerId" = @ownerId)
             ORDER BY "Rank" DESC, c."Id"
             LIMIT @take;
             """;
 
                 command.Parameters.Add(new NpgsqlParameter("query", query));
+                command.Parameters.Add(new NpgsqlParameter("ownerId", NpgsqlDbType.Uuid)
+                {
+                    Value = (object?)ownerId ?? DBNull.Value
+                });
                 command.Parameters.Add(new NpgsqlParameter("take", take));
 
                 var results = new List<RetrievedChunk>();

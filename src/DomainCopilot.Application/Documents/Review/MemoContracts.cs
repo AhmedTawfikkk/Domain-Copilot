@@ -36,7 +36,8 @@ public sealed record ReviewMemoDetails(
     DateTime CreatedAtUtc,
     DateTime? DecidedAtUtc,
     string? DecidedBy,
-    string? DecisionComment);
+    string? DecisionComment,
+    IReadOnlyList<MemoCitationExportSource> Citations);
 
 public sealed record ApproveMemoRequest(
     string CounselName,

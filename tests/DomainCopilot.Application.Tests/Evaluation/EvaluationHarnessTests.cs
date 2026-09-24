@@ -23,6 +23,7 @@ public class EvaluationHarnessTests
         answerService.Setup(service => service.AnswerAsync(
                 It.Is<AnswerRequest>(request =>
                     request.Question == "What is the liability cap?"),
+                It.IsAny<Guid?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GroundedAnswerResult(
                 AnswerStatus.Answered,
@@ -33,6 +34,7 @@ public class EvaluationHarnessTests
         answerService.Setup(service => service.AnswerAsync(
                 It.Is<AnswerRequest>(request =>
                     request.Question == "What is the CEO's home address?"),
+                It.IsAny<Guid?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GroundedAnswerResult(
                 AnswerStatus.Refused,
@@ -98,6 +100,7 @@ public class EvaluationHarnessTests
 
         answerService.Setup(service => service.AnswerAsync(
                 It.IsAny<AnswerRequest>(),
+                It.IsAny<Guid?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GroundedAnswerResult(
                 AnswerStatus.Answered,

@@ -348,7 +348,10 @@ namespace DomainCopilot.Application.Documents.Review
             string? correlationId,
             int limit,
             CancellationToken cancellationToken = default);
-        Task<IReadOnlyList<ReviewRunSummary>> ListAsync(CancellationToken cancellationToken = default);
+        Task<IReadOnlyList<ReviewRunSummary>> ListAsync(
+            Guid? ownerScopeId = null,
+            CancellationToken cancellationToken = default);
+        Task<Guid?> GetDocumentIdAsync(Guid runId, CancellationToken cancellationToken = default);
         Task SaveChangesAsync(CancellationToken cancellationToken = default);
     }
 

@@ -24,6 +24,7 @@ namespace DomainCopilot.Application.Tests.Retrieval
                     repository.SearchDenseAsync(
                         It.IsAny<float[]>(),
                         It.IsAny<int>(),
+                        It.IsAny<Guid?>(),
                         It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new[] { chunkA, chunkB });
 
@@ -31,6 +32,7 @@ namespace DomainCopilot.Application.Tests.Retrieval
                     repository.SearchKeywordAsync(
                         It.IsAny<string>(),
                         It.IsAny<int>(),
+                        It.IsAny<Guid?>(),
                         It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new[] { chunkB, chunkC });
 

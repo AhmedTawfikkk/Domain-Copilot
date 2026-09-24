@@ -53,9 +53,15 @@ public sealed class DocumentIngestionService : IDocumentIngestionService
 
         var hash = Convert.ToHexString(SHA256.HashData(fileBytes));
 
-        var existingDocument = await _dbContext.Documents
-            .AsNoTracking()
-            .FirstOrDefaultAsync(document => document.FileHash == hash, cancellationToken);
+        var existingDocument = command.OwnerId is null
+            ? await _dbContext.Documents
+                .AsNoTracking()
+                .FirstOrDefaultAsync(document => document.FileHash == hash, cancellationToken)
+            : await _dbContext.Documents
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    document => document.FileHash == hash && document.OwnerId == command.OwnerId,
+                    cancellationToken);
 
         if (existingDocument is not null)
         {
@@ -79,6 +85,7 @@ public sealed class DocumentIngestionService : IDocumentIngestionService
             Version = "1.0",
             FileHash = hash,
             UploadedAt = DateTime.UtcNow,
+            OwnerId = command.OwnerId,
             Status = DocumentStatus.Processing
         };
 

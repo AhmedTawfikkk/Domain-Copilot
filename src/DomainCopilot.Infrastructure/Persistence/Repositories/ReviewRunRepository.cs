@@ -73,16 +73,35 @@ public sealed class ReviewRunRepository : IReviewRunRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<ReviewRunSummary>> ListAsync(CancellationToken cancellationToken = default) =>
-        await _dbContext.ReviewRuns.AsNoTracking()
-            .Join(_dbContext.Documents.AsNoTracking(), run => run.DocumentId, document => document.Id,
-                (run, document) => new { run, document.FileName })
-            .OrderByDescending(item => item.run.StartedAtUtc)
-            .Select(item => new ReviewRunSummary(item.run.Id, item.run.DocumentId, item.FileName,
-                item.run.InitiatedBy, item.run.CorrelationId, item.run.Status.ToString(),
-                item.run.StartedAtUtc, item.run.CompletedAtUtc, item.run.ReviewMemoId,
-                item.run.TerminationReason))
-            .ToListAsync(cancellationToken);
+    public async Task<IReadOnlyList<ReviewRunSummary>> ListAsync(
+            Guid? ownerScopeId = null,
+            CancellationToken cancellationToken = default)
+        {
+            var query = _dbContext.ReviewRuns.AsNoTracking()
+                .Join(_dbContext.Documents.AsNoTracking(), run => run.DocumentId, document => document.Id,
+                    (run, document) => new { run, document.FileName, document.OwnerId });
+
+            if (ownerScopeId.HasValue)
+            {
+                query = query.Where(item => item.OwnerId == ownerScopeId.Value);
+            }
+
+            return await query
+                .OrderByDescending(item => item.run.StartedAtUtc)
+                .Select(item => new ReviewRunSummary(item.run.Id, item.run.DocumentId, item.FileName,
+                    item.run.InitiatedBy, item.run.CorrelationId, item.run.Status.ToString(),
+                    item.run.StartedAtUtc, item.run.CompletedAtUtc, item.run.ReviewMemoId,
+                    item.run.TerminationReason))
+                .ToListAsync(cancellationToken);
+        }
+
+        public Task<Guid?> GetDocumentIdAsync(
+            Guid runId,
+            CancellationToken cancellationToken = default) =>
+            _dbContext.ReviewRuns.AsNoTracking()
+                .Where(run => run.Id == runId)
+                .Select(run => (Guid?)run.DocumentId)
+                .SingleOrDefaultAsync(cancellationToken);
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
         _dbContext.SaveChangesAsync(cancellationToken);

@@ -62,7 +62,8 @@ public sealed class ReviewMemoExportServiceTests
                 DateTime.UtcNow,
                 DateTime.UtcNow,
                 "Counsel One",
-                null));
+                null,
+                new MemoCitationExportSource[0]));
 
         repository
             .Setup(repository => repository.GetExportSourceAsync(

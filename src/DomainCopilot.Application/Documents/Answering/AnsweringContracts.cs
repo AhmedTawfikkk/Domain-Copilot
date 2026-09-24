@@ -36,6 +36,7 @@ namespace DomainCopilot.Application.Documents.Answering
     {
         Task<GroundedAnswerResult> AnswerAsync(
             AnswerRequest request,
+            Guid? ownerId = null,
             CancellationToken cancellationToken = default);
     }
 
@@ -43,6 +44,7 @@ namespace DomainCopilot.Application.Documents.Answering
     {
         IAsyncEnumerable<GroundedAnswerStreamEvent> StreamAsync(
             AnswerRequest request,
+            Guid? ownerId = null,
             CancellationToken cancellationToken = default);
     }
 
