@@ -19,7 +19,9 @@ public sealed class OllamaProvider : ILlmProvider
     {
         _httpClient = httpClient;
         _telemetryRecorder = telemetryRecorder;
-        _httpClient.BaseAddress ??= new Uri("http://localhost:11434");
+        _httpClient.BaseAddress ??= new Uri(
+            Environment.GetEnvironmentVariable("OLLAMA_BASE_URL")
+            ?? "http://localhost:11434");
     }
 
     public async Task<string> CompleteAsync(

@@ -4,6 +4,8 @@
 
 Domain Copilot is an end-to-end RAG + multi-agent pipeline with an **approval gate** at the point where machine output becomes a legal deliverable. Every LLM call is traced, every review run is replayable, and a 25-case golden evaluation harness verifies that the system refuses what it cannot support — including prompt-injection attacks.
 
+> 🎬 **شرح الفيديوهات / Tutorial videos** — an unlisted Google Drive folder with the product demo and teaching walkthroughs: [Domain Copilot — explanation videos](https://drive.google.com/drive/folders/1gPAw2qaiU8z7ewf7bqRo0jHVChJ3Aa5s?usp=drive_link)
+
 | Stack | |
 |---|---|
 | **Runtime** | .NET 9 (ASP.NET Core) |
@@ -85,13 +87,13 @@ Browse to **http://localhost:8080** and create an account:
 
 ## Getting an API key (free)
 
-- **Gemini (default provider)** — go to [Google AI Studio](https://aistudio.google.com/) → *Get API key* → create a key (free tier included), copy it into `LLM_API_KEY`. If the key is invalid or the quota is exhausted, the app automatically falls back to a local Ollama model if one is running.
+- **Gemini (default provider)** — go to [Google AI Studio](https://aistudio.google.com/) → *Get API key* → create a key (free tier included), copy it into `LLM_API_KEY`. If the key is invalid or the quota is exhausted, the app automatically falls back to a local Ollama model if one is reachable (auto-configured in Docker via `host.docker.internal`; `localhost` when running `dotnet run`).
 - **No key at all? Run fully local with Ollama** — install [Ollama](https://ollama.com) and pull the models:
   ```bash
   ollama pull llama3.1:8b      # chat / generation
   ollama pull nomic-embed-text # embeddings
   ```
-  Then set `LLM_PROVIDER=ollama` in `.env` (Ollama must stay running on `localhost:11434`).
+  Then set `LLM_PROVIDER=ollama` in `.env`. In the Docker stack the API automatically reaches an Ollama installed on your machine (via `OLLAMA_BASE_URL=http://host.docker.internal:11434`); when running `dotnet run` locally, `localhost:11434` is used by default.
 
 ---
 
@@ -129,6 +131,7 @@ works.
 | `POSTGRES_CONNECTION_STRING` | `Host=localhost;Port=5432;Database=domain_copilot;Username=copilot;Password=change_me` | Used by the API (Override fully if not using the defaults) |
 | `LLM_API_KEY` | *(empty)* | Provider API key (Gemini). Ollama needs no key |
 | `LLM_PROVIDER` | `gemini` | Primary provider: `gemini` or `ollama`. The other provider is kept as automatic fallback |
+| `OLLAMA_BASE_URL` | `http://host.docker.internal:11434` (Docker) / `localhost:11434` (local dev default) | Where the Ollama fallback lives. Docker auto-reaches an Ollama installed on the host; override if your Ollama runs elsewhere |
 | `PdfOcr__TesseractExecutablePath` | *(empty)* | Path to `tesseract` (`.exe` on Windows). Preinstalled inside the Docker image |
 | `PdfOcr__PdfToPpmExecutablePath` | *(empty)* | Path to `pdftoppm` (Poppler). Preinstalled inside the Docker image |
 | `LlmTelemetry__GeminiInputCostPerMillionTokensUsd` | *(empty)* | Input price per 1M tokens → enables `EstimatedCostUsd` in telemetry |
@@ -240,7 +243,7 @@ Documentation index:
 | Container is `(unhealthy)` | PostgreSQL is still starting; wait, then `docker compose ps`. Check `docker compose logs postgres` |
 | `connection refused` on port 5432 | Postgres container not up — `docker compose up -d postgres` |
 | Auth cookie not persisted | The session cookie follows the request scheme (`SameAsRequest`): it is `Secure` over HTTPS (local dev, TLS-terminated deploys) and plain over HTTP — the Docker path at `http://localhost:8080` is tested end-to-end. If you terminate TLS in front of the Docker port, cookies become `Secure` automatically (no config change) |
-| Ollama calls time out | Start Ollama (`ollama serve`) and `ollama pull llama3.1:8b nomic-embed-text`; confirm `http://localhost:11434` is reachable from the container/host. Note: the default compose stack has **no** Ollama host mapping — Ollama as a provider requires the dev profile or adding a compose section for the host |
+| Ollama calls time out | Start Ollama (`ollama serve`) and `ollama pull llama3.1:8b nomic-embed-text`. The Docker stack reaches a host-installed Ollama via `OLLAMA_BASE_URL=http://host.docker.internal:11434` (the compose file also maps `host.docker.internal` for Linux hosts). If your Ollama runs elsewhere, point `OLLAMA_BASE_URL` there |
 | LLM chain silently dead in Docker while dev works | A stale repository-root `.env` can keep `LLM_PROVIDER`/`LLM_API_KEY` of a different provider than `src/DomainCopilot.Api/.env`. Point both files at the same provider/API key, then recreate the API container (`docker compose up -d --force-recreate api`) |
 | `Unable to find ... tesseract` on Windows | Install Tesseract + Poppler bin and set `PdfOcr__*` paths in `.env`, or use the Docker image (both preinstalled) |
 | Registration fails | Password must be ≥12 chars with upper, lower, digit, and symbol |
@@ -252,7 +255,6 @@ Documentation index:
 
 ## Docs, demos, and evaluation
 
-- **شرح الفيديوهات / Tutorial videos** — an unlisted Google Drive folder with the product demo and teaching walkthroughs: [Domain Copilot — explanation videos](https://drive.google.com/drive/folders/1gPAw2qaiU8z7ewf7bqRo0jHVChJ3Aa5s?usp=drive_link).
 - Live deployment … *see the deployment section of `docs/SYSTEM-DESIGN.md` for the free-tier target and the CI/CD notes.*
 
 **License:** not yet licensed — see repository for notices.
