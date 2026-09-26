@@ -205,9 +205,16 @@ builder.Services
 // Services — LLM Providers (Day 4)
 // ============================================================
 
+// The Ollama endpoint is configurable (OLLAMA_BASE_URL) so the same code can
+// reach a host-installed Ollama from Docker (host.docker.internal), an
+// in-compose Ollama service, or a local Ollama when running `dotnet run`.
+// The default stays localhost:11434 when nothing is configured.
+var ollamaBaseUrl =
+    builder.Configuration["OLLAMA_BASE_URL"] ?? "http://localhost:11434";
+
 builder.Services.AddHttpClient("ollama", client =>
 {
-    client.BaseAddress = new Uri("http://localhost:11434");
+    client.BaseAddress = new Uri(ollamaBaseUrl);
     client.Timeout = Timeout.InfiniteTimeSpan;
 });
 
